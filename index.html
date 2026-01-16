@@ -103,10 +103,11 @@
                         if (data) {
                             setRestaurants(data.restaurants || []);
                             const votes = data.votes || {};
+                            const participantsList = data.participants || [];
                             setAllVotes(votes);
                             setUserVotes(votes[userName] || {});
-                            setParticipants(data.participants || []);
-                            calculateMatches(data.restaurants || [], votes);
+                            setParticipants(participantsList);
+                            calculateMatches(data.restaurants || [], votes, participantsList);
                         }
                     });
 
@@ -165,16 +166,16 @@
                 }
             };
 
-            const calculateMatches = (restaurantList, votes) => {
+            const calculateMatches = (restaurantList, votes, participantsList) => {
                 // Use participants count instead of voters count
-                if (participants.length < 2) {
+                if (!participantsList || participantsList.length < 2) {
                     setMatches([]);
                     return;
                 }
                 
                 const matched = restaurantList.filter(restaurant => {
                     // ALL participants must have voted yes
-                    return participants.every(participant => votes[participant]?.[restaurant] === true);
+                    return participantsList.every(participant => votes[participant]?.[restaurant] === true);
                 });
                 setMatches(matched);
             };
