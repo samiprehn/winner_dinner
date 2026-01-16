@@ -182,20 +182,30 @@
             const addRestaurant = async () => {
                 if (!newRestaurant.trim()) return;
                 
+                setError('');
                 try {
                     const sessionRef = database.ref(`sessions/${sessionCode}`);
                     const snapshot = await sessionRef.once('value');
-                    const data = snapshot.val() || { restaurants: [], votes: {} };
+                    const data = snapshot.val();
+                    
+                    if (!data) {
+                        setError('Session not found. Please refresh.');
+                        return;
+                    }
                     
                     const trimmedName = newRestaurant.trim();
-                    if (!data.restaurants.includes(trimmedName)) {
-                        data.restaurants.push(trimmedName);
-                        await sessionRef.update({ restaurants: data.restaurants });
+                    const currentRestaurants = data.restaurants || [];
+                    
+                    if (!currentRestaurants.includes(trimmedName)) {
+                        currentRestaurants.push(trimmedName);
+                        await sessionRef.child('restaurants').set(currentRestaurants);
                         setNewRestaurant('');
+                    } else {
+                        setError('This restaurant is already in the list.');
                     }
                 } catch (err) {
                     console.error('Error adding restaurant:', err);
-                    setError('Failed to add restaurant. Please try again.');
+                    setError(`Failed to add restaurant: ${err.message}`);
                 }
             };
 
