@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dinner Match - Couples Restaurant Picker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXuNDKYtP7DhF3r1V5x0q5SlrK-TO6TAM",
+            authDomain: "winner-dinner-3e154.firebaseapp.com",
+            databaseURL: "https://winner-dinner-3e154-default-rtdb.firebaseio.com",
+            projectId: "winner-dinner-3e154",
+            storageBucket: "winner-dinner-3e154.firebasestorage.app",
+            messagingSenderId: "1063162162261",
+            appId: "1:1063162162261:web:44ff6dcf320a8142fc78dc"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // Lucide React icons as inline SVG components
+        const Heart = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+        );
+        
+        const X = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        );
+        
+        const Plus = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+        );
+        
+        const Users = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+        );
+        
+        const Sparkles = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                <path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>
+            </svg>
+        );
+
+        function DinnerMatch() {
+            const [screen, setScreen] = useState('home');
+            const [sessionCode, setSessionCode] = useState('');
+            const [inputCode, setInputCode] = useState('');
+            const [userName, setUserName] = useState('');
+            const [restaurants, setRestaurants] = useState([]);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [newRestaurant, setNewRestaurant] = useState('');
+            const [matches, setMatches] = useState([]);
+            const [userVotes, setUserVotes] = useState({});
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+
+            useEffect(() => {
+                if (sessionCode && screen === 'swipe') {
+                    const sessionRef = database.ref(`sessions/${sessionCode}`);
+                    
+                    sessionRef.on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            setRestaurants(data.restaurants || []);
+                            const allVotes = data.votes || {};
+                            setUserVotes(allVotes[userName] || {});
+                            calculateMatches(data.restaurants || [], allVotes);
+                        }
+                    });
+
+                    return () => sessionRef.off();
+                }
+            }, [sessionCode, screen, userName]);
+
+            const generateCode = () => {
+                return Math.random().toString(36).substring(2, 8).toUpperCase();
+            };
+
+            const createSession = async () => {
+                if (!userName.trim()) return;
+                setLoading(true);
+                setError('');
+                
+                const code = generateCode();
+                const sessionData = {
+                    restaurants: [],
+                    votes: {}
+                };
+                
+                try {
+                    await database.ref(`sessions/${code}`).set(sessionData);
+                    setSessionCode(code);
+                    setScreen('swipe');
+                } catch (err) {
+                    setError('Failed to create session. Please try again.');
+                    console.error('Error creating session:', err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const joinSession = async () => {
+                if (!userName.trim() || !inputCode.trim()) return;
+                setLoading(true);
+                setError('');
+                
+                const code = inputCode.toUpperCase().trim();
+                
+                try {
+                    const snapshot = await database.ref(`sessions/${code}`).once('value');
+                    if (snapshot.exists()) {
+                        setSessionCode(code);
+                        setScreen('swipe');
+                    } else {
+                        setError('Session not found. Please check the code.');
+                    }
+                } catch (err) {
+                    setError('Session not found. Please check the code.');
+                    console.error('Error joining session:', err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const calculateMatches = (restaurantList, allVotes) => {
+                const matched = restaurantList.filter(restaurant => {
+                    const voters = Object.keys(allVotes);
+                    if (voters.length < 2) return false;
+                    
+                    return voters.every(voter => allVotes[voter][restaurant] === true);
+                });
+                setMatches(matched);
+            };
+
+            const addRestaurant = async () => {
+                if (!newRestaurant.trim()) return;
+                
+                try {
+                    const sessionRef = database.ref(`sessions/${sessionCode}`);
+                    const snapshot = await sessionRef.once('value');
+                    const data = snapshot.val() || { restaurants: [], votes: {} };
+                    
+                    const trimmedName = newRestaurant.trim();
+                    if (!data.restaurants.includes(trimmedName)) {
+                        data.restaurants.push(trimmedName);
+                        await sessionRef.update({ restaurants: data.restaurants });
+                        setNewRestaurant('');
+                    }
+                } catch (err) {
+                    console.error('Error adding restaurant:', err);
+                    setError('Failed to add restaurant. Please try again.');
+                }
+            };
+
+            const vote = async (liked) => {
+                const restaurant = restaurants[currentIndex];
+                const newUserVotes = { ...userVotes, [restaurant]: liked };
+                setUserVotes(newUserVotes);
+
+                try {
+                    await database.ref(`sessions/${sessionCode}/votes/${userName}`).set(newUserVotes);
+                    
+                    if (currentIndex < restaurants.length - 1) {
+                        setCurrentIndex(currentIndex + 1);
+                    }
+                } catch (err) {
+                    console.error('Error saving vote:', err);
+                    setError('Failed to save vote. Please try again.');
+                }
+            };
+
+            const resetVotes = async () => {
+                const newUserVotes = {};
+                setUserVotes(newUserVotes);
+                setCurrentIndex(0);
+
+                try {
+                    await database.ref(`sessions/${sessionCode}/votes/${userName}`).set(newUserVotes);
+                } catch (err) {
+                    console.error('Error resetting votes:', err);
+                }
+            };
+
+            if (screen === 'home') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+                            <div className="text-center mb-8">
+                                <div className="inline-block p-4 bg-pink-100 rounded-full mb-4">
+                                    <Heart className="w-12 h-12 text-pink-600" />
+                                </div>
+                                <h1 className="text-4xl font-bold text-gray-800 mb-2">Dinner Match</h1>
+                                <p className="text-gray-600">Swipe together, eat together</p>
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-4">
+                                    {error}
+                                </div>
+                            )}
+
+                            <input
+                                type="text"
+                                placeholder="Your name"
+                                value={userName}
+                                onChange={(e) => setUserName(e.target.value)}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-6 focus:border-pink-500 focus:outline-none"
+                            />
+
+                            <button
+                                onClick={createSession}
+                                disabled={!userName.trim() || loading}
+                                className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white py-4 rounded-xl font-semibold mb-4 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {loading ? 'Creating...' : 'Create New Session'}
+                            </button>
+
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="flex-1 h-px bg-gray-300"></div>
+                                <span className="text-gray-500 text-sm">OR</span>
+                                <div className="flex-1 h-px bg-gray-300"></div>
+                            </div>
+
+                            <input
+                                type="text"
+                                placeholder="Enter session code"
+                                value={inputCode}
+                                onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:border-purple-500 focus:outline-none uppercase"
+                            />
+
+                            <button
+                                onClick={joinSession}
+                                disabled={!userName.trim() || !inputCode.trim() || loading}
+                                className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {loading ? 'Joining...' : 'Join Session'}
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'swipe') {
+                const currentRestaurant = restaurants[currentIndex];
+                const hasVoted = currentRestaurant && userVotes[currentRestaurant] !== undefined;
+                const allVoted = restaurants.length > 0 && restaurants.every(r => userVotes[r] !== undefined);
+
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 p-4">
+                        <div className="max-w-md mx-auto pt-8">
+                            <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-500">Session Code</p>
+                                        <p className="text-2xl font-bold text-gray-800">{sessionCode}</p>
+                                        <p className="text-xs text-gray-400">Share this code with your partner</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm text-gray-500">Logged in as</p>
+                                        <p className="text-lg font-semibold text-purple-600">{userName}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-4">
+                                    {error}
+                                </div>
+                            )}
+
+                            {matches.length > 0 && (
+                                <div className="bg-green-500 text-white rounded-2xl shadow-lg p-6 mb-6 animate-pulse">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <Sparkles className="w-6 h-6" />
+                                        <h3 className="text-xl font-bold">You Matched!</h3>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {matches.map((restaurant, idx) => (
+                                            <div key={idx} className="bg-white/20 rounded-lg px-4 py-2">
+                                                <p className="font-semibold text-lg">{restaurant}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-xl font-bold text-gray-800">Add Restaurant</h2>
+                                    <Users className="w-6 h-6 text-purple-600" />
+                                </div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Restaurant name"
+                                        value={newRestaurant}
+                                        onChange={(e) => setNewRestaurant(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && addRestaurant()}
+                                        className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none"
+                                    />
+                                    <button
+                                        onClick={addRestaurant}
+                                        className="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700 transition-colors"
+                                    >
+                                        <Plus className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {restaurants.length === 0 ? (
+                                <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+                                    <p className="text-gray-500 text-lg">Add some restaurants to get started!</p>
+                                </div>
+                            ) : allVoted ? (
+                                <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-4">All done!</h3>
+                                    <p className="text-gray-600 mb-6">You've voted on all restaurants.</p>
+                                    <button
+                                        onClick={resetVotes}
+                                        className="bg-purple-600 text-white px-8 py-3 rounded-xl hover:bg-purple-700 transition-colors"
+                                    >
+                                        Vote Again
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                                    <div className="bg-gradient-to-br from-pink-400 to-purple-500 p-12 text-center">
+                                        <h2 className="text-4xl font-bold text-white mb-2">{currentRestaurant}</h2>
+                                        <p className="text-white/80">
+                                            {currentIndex + 1} of {restaurants.length}
+                                        </p>
+                                    </div>
+                                    
+                                    {hasVoted ? (
+                                        <div className="p-8 text-center">
+                                            <p className="text-gray-600 mb-4">
+                                                You voted: {userVotes[currentRestaurant] ? '❤️ Yes' : '✕ No'}
+                                            </p>
+                                            <button
+                                                onClick={() => setCurrentIndex(Math.min(currentIndex + 1, restaurants.length - 1))}
+                                                className="bg-purple-600 text-white px-8 py-3 rounded-xl hover:bg-purple-700 transition-colors"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="p-8">
+                                            <div className="flex gap-4 justify-center">
+                                                <button
+                                                    onClick={() => vote(false)}
+                                                    className="flex-1 bg-red-500 text-white py-6 rounded-2xl hover:bg-red-600 transition-all flex items-center justify-center gap-2 text-xl font-semibold"
+                                                >
+                                                    <X className="w-8 h-8" />
+                                                    Pass
+                                                </button>
+                                                <button
+                                                    onClick={() => vote(true)}
+                                                    className="flex-1 bg-green-500 text-white py-6 rounded-2xl hover:bg-green-600 transition-all flex items-center justify-center gap-2 text-xl font-semibold"
+                                                >
+                                                    <Heart className="w-8 h-8" />
+                                                    Like
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        ReactDOM.render(<DinnerMatch />, document.getElementById('root'));
+    </script>
+</body>
+</html>
