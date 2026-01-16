@@ -157,12 +157,13 @@
 
             const calculateMatches = (restaurantList, votes) => {
                 const voters = Object.keys(votes);
-                if (voters.length === 0) {
+                if (voters.length < 2) {
                     setMatches([]);
                     return;
                 }
                 
                 const matched = restaurantList.filter(restaurant => {
+                    // ALL people in session must have voted yes
                     return voters.every(voter => votes[voter][restaurant] === true);
                 });
                 setMatches(matched);
@@ -332,7 +333,9 @@
                                         <Sparkles className="w-6 h-6" />
                                         <h3 className="text-xl font-bold">Everyone Agrees!</h3>
                                     </div>
-                                    <p className="text-sm text-white/90 mb-3">All {activeUsers.length} voters liked:</p>
+                                    <p className="text-sm text-white/90 mb-3">
+                                        {activeUsers.length} voters all liked:
+                                    </p>
                                     <div className="space-y-2">
                                         {matches.map((restaurant, idx) => (
                                             <div key={idx} className="bg-white/20 rounded-lg px-4 py-2">
