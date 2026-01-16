@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dinner Match - Couples Restaurant Picker</title>
+    <title>Winner Dinner - Restaurant Picker</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -63,8 +63,14 @@
                 <path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>
             </svg>
         );
+        
+        const CheckCircle = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+        );
 
-        function DinnerMatch() {
+        function WinnerDinner() {
             const [screen, setScreen] = useState('home');
             const [sessionCode, setSessionCode] = useState('');
             const [inputCode, setInputCode] = useState('');
@@ -74,6 +80,8 @@
             const [newRestaurant, setNewRestaurant] = useState('');
             const [matches, setMatches] = useState([]);
             const [userVotes, setUserVotes] = useState({});
+            const [allVotes, setAllVotes] = useState({});
+            const [activeUsers, setActiveUsers] = useState([]);
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
 
@@ -85,9 +93,11 @@
                         const data = snapshot.val();
                         if (data) {
                             setRestaurants(data.restaurants || []);
-                            const allVotes = data.votes || {};
-                            setUserVotes(allVotes[userName] || {});
-                            calculateMatches(data.restaurants || [], allVotes);
+                            const votes = data.votes || {};
+                            setAllVotes(votes);
+                            setUserVotes(votes[userName] || {});
+                            setActiveUsers(Object.keys(votes));
+                            calculateMatches(data.restaurants || [], votes);
                         }
                     });
 
@@ -145,12 +155,15 @@
                 }
             };
 
-            const calculateMatches = (restaurantList, allVotes) => {
+            const calculateMatches = (restaurantList, votes) => {
+                const voters = Object.keys(votes);
+                if (voters.length === 0) {
+                    setMatches([]);
+                    return;
+                }
+                
                 const matched = restaurantList.filter(restaurant => {
-                    const voters = Object.keys(allVotes);
-                    if (voters.length < 2) return false;
-                    
-                    return voters.every(voter => allVotes[voter][restaurant] === true);
+                    return voters.every(voter => votes[voter][restaurant] === true);
                 });
                 setMatches(matched);
             };
@@ -204,6 +217,15 @@
                 }
             };
 
+            const getVoterStatusForRestaurant = (restaurant) => {
+                const voters = Object.keys(allVotes);
+                const liked = voters.filter(voter => allVotes[voter][restaurant] === true);
+                const disliked = voters.filter(voter => allVotes[voter][restaurant] === false);
+                const pending = voters.filter(voter => allVotes[voter][restaurant] === undefined);
+                
+                return { liked, disliked, pending, total: voters.length };
+            };
+
             if (screen === 'home') {
                 return (
                     <div className="min-h-screen bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 flex items-center justify-center p-4">
@@ -212,8 +234,8 @@
                                 <div className="inline-block p-4 bg-pink-100 rounded-full mb-4">
                                     <Heart className="w-12 h-12 text-pink-600" />
                                 </div>
-                                <h1 className="text-4xl font-bold text-gray-800 mb-2">Dinner Match</h1>
-                                <p className="text-gray-600">Swipe together, eat together</p>
+                                <h1 className="text-4xl font-bold text-gray-800 mb-2">Winner Dinner</h1>
+                                <p className="text-gray-600">Vote together, eat together</p>
                             </div>
 
                             {error && (
@@ -268,22 +290,34 @@
                 const currentRestaurant = restaurants[currentIndex];
                 const hasVoted = currentRestaurant && userVotes[currentRestaurant] !== undefined;
                 const allVoted = restaurants.length > 0 && restaurants.every(r => userVotes[r] !== undefined);
+                const currentStatus = currentRestaurant ? getVoterStatusForRestaurant(currentRestaurant) : null;
 
                 return (
                     <div className="min-h-screen bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 p-4">
                         <div className="max-w-md mx-auto pt-8">
                             <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between mb-3">
                                     <div>
                                         <p className="text-sm text-gray-500">Session Code</p>
                                         <p className="text-2xl font-bold text-gray-800">{sessionCode}</p>
-                                        <p className="text-xs text-gray-400">Share this code with your partner</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-sm text-gray-500">Logged in as</p>
                                         <p className="text-lg font-semibold text-purple-600">{userName}</p>
                                     </div>
                                 </div>
+                                {activeUsers.length > 0 && (
+                                    <div className="border-t pt-3">
+                                        <p className="text-xs text-gray-500 mb-2">Active voters:</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {activeUsers.map(user => (
+                                                <span key={user} className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">
+                                                    {user}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {error && (
@@ -296,8 +330,9 @@
                                 <div className="bg-green-500 text-white rounded-2xl shadow-lg p-6 mb-6 animate-pulse">
                                     <div className="flex items-center gap-3 mb-3">
                                         <Sparkles className="w-6 h-6" />
-                                        <h3 className="text-xl font-bold">You Matched!</h3>
+                                        <h3 className="text-xl font-bold">Everyone Agrees!</h3>
                                     </div>
+                                    <p className="text-sm text-white/90 mb-3">All {activeUsers.length} voters liked:</p>
                                     <div className="space-y-2">
                                         {matches.map((restaurant, idx) => (
                                             <div key={idx} className="bg-white/20 rounded-lg px-4 py-2">
@@ -348,18 +383,31 @@
                                 </div>
                             ) : (
                                 <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                                    <div className="bg-gradient-to-br from-pink-400 to-purple-500 p-12 text-center">
+                                    <div className="bg-gradient-to-br from-pink-400 to-purple-500 p-8 text-center">
                                         <h2 className="text-4xl font-bold text-white mb-2">{currentRestaurant}</h2>
-                                        <p className="text-white/80">
+                                        <p className="text-white/80 mb-4">
                                             {currentIndex + 1} of {restaurants.length}
                                         </p>
+                                        {currentStatus && currentStatus.total > 1 && (
+                                            <div className="bg-white/20 rounded-lg px-4 py-2 inline-block">
+                                                <p className="text-sm text-white/90">
+                                                    {currentStatus.liked.length > 0 && `❤️ ${currentStatus.liked.length} liked`}
+                                                    {currentStatus.liked.length > 0 && currentStatus.disliked.length > 0 && ' • '}
+                                                    {currentStatus.disliked.length > 0 && `✕ ${currentStatus.disliked.length} passed`}
+                                                    {currentStatus.pending.length > 0 && ` • ⏳ ${currentStatus.pending.length} pending`}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                     
                                     {hasVoted ? (
                                         <div className="p-8 text-center">
-                                            <p className="text-gray-600 mb-4">
-                                                You voted: {userVotes[currentRestaurant] ? '❤️ Yes' : '✕ No'}
-                                            </p>
+                                            <div className="flex items-center justify-center gap-2 mb-4">
+                                                <CheckCircle className="w-6 h-6 text-green-600" />
+                                                <p className="text-gray-600">
+                                                    You voted: {userVotes[currentRestaurant] ? '❤️ Yes' : '✕ No'}
+                                                </p>
+                                            </div>
                                             <button
                                                 onClick={() => setCurrentIndex(Math.min(currentIndex + 1, restaurants.length - 1))}
                                                 className="bg-purple-600 text-white px-8 py-3 rounded-xl hover:bg-purple-700 transition-colors"
@@ -395,7 +443,7 @@
             }
         }
 
-        ReactDOM.render(<DinnerMatch />, document.getElementById('root'));
+        ReactDOM.render(<WinnerDinner />, document.getElementById('root'));
     </script>
 </body>
 </html>
