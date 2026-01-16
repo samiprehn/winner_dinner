@@ -81,13 +81,22 @@
             const [matches, setMatches] = useState([]);
             const [userVotes, setUserVotes] = useState({});
             const [allVotes, setAllVotes] = useState({});
-            const [activeUsers, setActiveUsers] = useState([]);
+            const [participants, setParticipants] = useState([]);
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
 
             useEffect(() => {
                 if (sessionCode && screen === 'swipe') {
                     const sessionRef = database.ref(`sessions/${sessionCode}`);
+                    
+                    // Add user to participants list when they join
+                    const participantsRef = database.ref(`sessions/${sessionCode}/participants`);
+                    participantsRef.once('value', (snapshot) => {
+                        const currentParticipants = snapshot.val() || [];
+                        if (!currentParticipants.includes(userName)) {
+                            participantsRef.set([...currentParticipants, userName]);
+                        }
+                    });
                     
                     sessionRef.on('value', (snapshot) => {
                         const data = snapshot.val();
@@ -96,7 +105,7 @@
                             const votes = data.votes || {};
                             setAllVotes(votes);
                             setUserVotes(votes[userName] || {});
-                            setActiveUsers(Object.keys(votes));
+                            setParticipants(data.participants || []);
                             calculateMatches(data.restaurants || [], votes);
                         }
                     });
@@ -117,7 +126,8 @@
                 const code = generateCode();
                 const sessionData = {
                     restaurants: [],
-                    votes: {}
+                    votes: {},
+                    participants: []
                 };
                 
                 try {
@@ -156,15 +166,15 @@
             };
 
             const calculateMatches = (restaurantList, votes) => {
-                const voters = Object.keys(votes);
-                if (voters.length < 2) {
+                // Use participants count instead of voters count
+                if (participants.length < 2) {
                     setMatches([]);
                     return;
                 }
                 
                 const matched = restaurantList.filter(restaurant => {
-                    // ALL people in session must have voted yes
-                    return voters.every(voter => votes[voter][restaurant] === true);
+                    // ALL participants must have voted yes
+                    return participants.every(participant => votes[participant]?.[restaurant] === true);
                 });
                 setMatches(matched);
             };
@@ -307,11 +317,11 @@
                                         <p className="text-lg font-semibold text-purple-600">{userName}</p>
                                     </div>
                                 </div>
-                                {activeUsers.length > 0 && (
+                                {participants.length > 0 && (
                                     <div className="border-t pt-3">
-                                        <p className="text-xs text-gray-500 mb-2">Active voters:</p>
+                                        <p className="text-xs text-gray-500 mb-2">Participants ({participants.length}):</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {activeUsers.map(user => (
+                                            {participants.map(user => (
                                                 <span key={user} className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">
                                                     {user}
                                                 </span>
@@ -334,7 +344,7 @@
                                         <h3 className="text-xl font-bold">Everyone Agrees!</h3>
                                     </div>
                                     <p className="text-sm text-white/90 mb-3">
-                                        {activeUsers.length} voters all liked:
+                                        {participants.length} participants all liked:
                                     </p>
                                     <div className="space-y-2">
                                         {matches.map((restaurant, idx) => (
