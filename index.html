@@ -388,7 +388,7 @@
                                         <p className="text-white/80 mb-4">
                                             {currentIndex + 1} of {restaurants.length}
                                         </p>
-                                        {currentStatus && currentStatus.total > 1 && (
+                                        {hasVoted && currentStatus && currentStatus.total > 1 && (
                                             <div className="bg-white/20 rounded-lg px-4 py-2 inline-block">
                                                 <p className="text-sm text-white/90">
                                                     {currentStatus.liked.length > 0 && `❤️ ${currentStatus.liked.length} liked`}
