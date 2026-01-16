@@ -57,7 +57,7 @@ A group restaurant picker app that helps you and your friends (or partner) agree
 
 ## Live Demo
 
-Visit: `https://samiprehn.github.io/winner-dinner`
+Visit: `https://samiprehn.github.io/winner_dinner`
 
 ## Technology Stack
 
