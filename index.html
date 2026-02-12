@@ -521,7 +521,7 @@
                         <div className="max-w-md mx-auto pt-6">
                             <div className="flex items-center justify-between mb-8 fade-in">
                                 <div>
-                                    <h1 className="font-display text-3xl text-white">Your Sessions</h1>
+                                    <h1 className="font-display text-3xl text-white">Your Dinner Parties</h1>
                                     <p className="text-white/40 text-sm mt-1">Hey, {user.displayName?.split(' ')[0] || 'there'}</p>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -557,7 +557,7 @@
                             {/* Create */}
                             {showCreate ? (
                                 <div className="bg-white/5 rounded-2xl p-5 mb-6 card-glow fade-in">
-                                    <p className="text-white/60 text-sm mb-3">Name your session</p>
+                                    <p className="text-white/60 text-sm mb-3">Name your dinner party</p>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
@@ -577,10 +577,10 @@
                             ) : (
                                 <button
                                     onClick={() => setShowCreate(true)}
-                                    className="w-full border-2 border-dashed border-white/10 rounded-2xl p-5 mb-6 text-white/30 hover:text-white/50 hover:border-white/20 transition-all flex items-center justify-center gap-2 fade-in"
+                                    className="w-full border-2 border-dashed border-white/20 rounded-2xl p-5 mb-6 text-white/50 hover:text-white/70 hover:border-white/30 transition-all flex items-center justify-center gap-2 fade-in"
                                     style={{animationDelay:'0.1s'}}
                                 >
-                                    <PlusIcon className="w-5 h-5" /> Create New Session
+                                    <PlusIcon className="w-5 h-5" /> Create New Dinner Party
                                 </button>
                             )}
 
