@@ -110,7 +110,11 @@
                     const sessionRef = database.ref(`sessions/${sessionCode}`);
                     
                     // Add user to participants (keyed by uid, value is display name)
-                    database.ref(`sessions/${sessionCode}/participants/${uid}`).set(userName);
+                    database.ref(`sessions/${sessionCode}/participants/${uid}`).set(userName)
+                        .catch(err => {
+                            console.error('Failed to write participant:', err);
+                            setError(`Failed to join as participant: ${err.message}`);
+                        });
                     
                     sessionRef.on('value', (snapshot) => {
                         const data = snapshot.val();
@@ -134,7 +138,7 @@
             };
 
             const createSession = async () => {
-                if (!userName.trim() || !uid) return;
+                if (!userName.trim() || !uid || loading) return;
                 setLoading(true);
                 setError('');
                 
@@ -148,6 +152,7 @@
                 try {
                     await database.ref(`sessions/${code}`).set(sessionData);
                     setSessionCode(code);
+                    setInputCode('');
                     setScreen('swipe');
                 } catch (err) {
                     setError('Failed to create session. Please try again.');
@@ -158,7 +163,7 @@
             };
 
             const joinSession = async () => {
-                if (!userName.trim() || !inputCode.trim() || !uid) return;
+                if (!userName.trim() || !inputCode.trim() || !uid || loading) return;
                 setLoading(true);
                 setError('');
                 
@@ -325,6 +330,7 @@
                                 placeholder="Enter session code"
                                 value={inputCode}
                                 onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                                onKeyPress={(e) => e.key === 'Enter' && joinSession()}
                                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:border-purple-500 focus:outline-none uppercase"
                             />
 
