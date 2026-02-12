@@ -146,7 +146,9 @@
                 const sessionData = {
                     restaurants: [],
                     votes: {},
-                    participants: {}
+                    participants: {
+                        [uid]: userName
+                    }
                 };
                 
                 try {
