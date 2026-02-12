@@ -192,7 +192,7 @@
         );
 
         // *** REPLACE THIS with your Cloudflare Worker URL ***
-        const PROXY_URL = 'https://winner-dinner.sami-prehn.workers.dev';
+        const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
         function WinnerDinner() {
             const [user, setUser] = useState(null);
@@ -466,6 +466,29 @@
                 }
             };
 
+            const parseOverpassResults = (data) => {
+                return data.elements
+                    .filter(el => el.tags && el.tags.name)
+                    .map(el => {
+                        const lat = el.lat || el.center?.lat;
+                        const lon = el.lon || el.center?.lon;
+                        const tags = el.tags;
+                        const cuisine = tags.cuisine ? tags.cuisine.split(';').map(c => c.trim().replace(/_/g, ' ')).join(', ') : '';
+                        const addr = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean).join(' ');
+                        const city = tags['addr:city'] || '';
+                        const fullAddr = [addr, city].filter(Boolean).join(', ');
+                        return { name: tags.name, address: fullAddr, category: cuisine, lat, lon };
+                    });
+            };
+
+            const getDistanceMiles = (lat1, lon1, lat2, lon2) => {
+                const R = 3958.8;
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            };
+
             const searchRestaurants = async () => {
                 if (newRestaurant.trim().length < 2) {
                     setSearchResults([]);
@@ -473,20 +496,41 @@
                 }
                 setSearchLoading(true);
                 try {
-                    const params = new URLSearchParams({ query: newRestaurant.trim(), limit: '10', radius: '25000' });
-                    if (userLocation) params.set('ll', userLocation);
-                    const res = await fetch(`${PROXY_URL}?${params}`);
+                    const searchTerm = newRestaurant.trim().toLowerCase();
+                    const ll = userLocation ? userLocation.split(',') : null;
+                    const lat = ll ? ll[0] : '32.7157';
+                    const lon = ll ? ll[1] : '-117.1611';
+                    const query = `[out:json][timeout:15];
+                        (
+                          node["amenity"="restaurant"](around:40000,${lat},${lon});
+                          way["amenity"="restaurant"](around:40000,${lat},${lon});
+                          node["amenity"="fast_food"](around:40000,${lat},${lon});
+                          way["amenity"="fast_food"](around:40000,${lat},${lon});
+                        );
+                        out center 200;`;
+                    const res = await fetch(OVERPASS_URL, {
+                        method: 'POST',
+                        body: `data=${encodeURIComponent(query)}`,
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                    });
                     const data = await res.json();
-                    if (data.results) {
-                        setSearchResults(data.results.map(r => ({
-                            name: r.name,
-                            address: r.location?.formatted_address || r.location?.address || '',
-                            category: r.categories?.[0]?.name || '',
-                            distance: r.distance
-                        })));
+                    let results = parseOverpassResults(data);
+                    // Filter by search term (name or cuisine)
+                    results = results.filter(r =>
+                        r.name.toLowerCase().includes(searchTerm) ||
+                        r.category.toLowerCase().includes(searchTerm)
+                    );
+                    // Add distance and sort
+                    if (ll) {
+                        results = results.map(r => ({
+                            ...r,
+                            distance: r.lat ? getDistanceMiles(parseFloat(lat), parseFloat(lon), r.lat, r.lon) : null
+                        })).sort((a, b) => (a.distance || 999) - (b.distance || 999));
                     }
+                    setSearchResults(results.slice(0, 50));
                 } catch (err) {
                     console.error('Search failed:', err);
+                    setError('Search failed. Try again.');
                 } finally {
                     setSearchLoading(false);
                 }
@@ -494,7 +538,6 @@
 
             const browseNearby = async () => {
                 if (!userLocation) {
-                    // Request location first, then browse
                     if (navigator.geolocation) {
                         navigator.geolocation.getCurrentPosition(
                             (pos) => {
@@ -519,17 +562,27 @@
                 setNewRestaurant('');
                 setSelectedResults(new Set());
                 try {
-                    const params = new URLSearchParams({ ll, limit: '50', radius: '25000' });
-                    const res = await fetch(`${PROXY_URL}?${params}`);
+                    const [lat, lon] = ll.split(',');
+                    const query = `[out:json][timeout:15];
+                        (
+                          node["amenity"="restaurant"](around:40000,${lat},${lon});
+                          way["amenity"="restaurant"](around:40000,${lat},${lon});
+                          node["amenity"="fast_food"](around:40000,${lat},${lon});
+                          way["amenity"="fast_food"](around:40000,${lat},${lon});
+                        );
+                        out center 50;`;
+                    const res = await fetch(OVERPASS_URL, {
+                        method: 'POST',
+                        body: `data=${encodeURIComponent(query)}`,
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                    });
                     const data = await res.json();
-                    if (data.results) {
-                        setSearchResults(data.results.map(r => ({
-                            name: r.name,
-                            address: r.location?.formatted_address || r.location?.address || '',
-                            category: r.categories?.[0]?.name || '',
-                            distance: r.distance
-                        })));
-                    }
+                    let results = parseOverpassResults(data);
+                    results = results.map(r => ({
+                        ...r,
+                        distance: r.lat ? getDistanceMiles(parseFloat(lat), parseFloat(lon), r.lat, r.lon) : null
+                    })).sort((a, b) => (a.distance || 999) - (b.distance || 999));
+                    setSearchResults(results.slice(0, 50));
                 } catch (err) {
                     console.error('Browse failed:', err);
                     setError('Failed to load nearby restaurants.');
@@ -939,7 +992,7 @@
                                                                 {r.address && <p className="text-white/30 text-xs truncate">{r.address}</p>}
                                                                 <div className="flex items-center gap-2 mt-0.5">
                                                                     {r.category && <span className="text-white/20 text-xs">{r.category}</span>}
-                                                                    {r.distance != null && <span className="text-white/20 text-xs">· {(r.distance / 1609.34).toFixed(1)} mi</span>}
+                                                                    {r.distance != null && <span className="text-white/20 text-xs">· {r.distance.toFixed(1)} mi</span>}
                                                                 </div>
                                                             </div>
                                                         </button>
