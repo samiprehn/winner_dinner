@@ -204,6 +204,7 @@
             const [editingName, setEditingName] = useState(false);
             const [editNameValue, setEditNameValue] = useState('');
             const [showRestaurantList, setShowRestaurantList] = useState(false);
+            const [sessionParticipants, setSessionParticipants] = useState({});
 
             // Auth listener
             useEffect(() => {
@@ -221,6 +222,24 @@
                 ref.on('value', (snap) => setUserSessions(snap.val() || {}));
                 return () => ref.off();
             }, [user]);
+
+            // Load participants for each session (for home screen display)
+            useEffect(() => {
+                if (!user) return;
+                const codes = Object.keys(userSessions);
+                if (codes.length === 0) { setSessionParticipants({}); return; }
+                
+                const listeners = [];
+                codes.forEach(code => {
+                    const ref = database.ref(`sessions/${code}/participants`);
+                    const handler = ref.on('value', (snap) => {
+                        const parts = snap.val() || {};
+                        setSessionParticipants(prev => ({ ...prev, [code]: Object.values(parts) }));
+                    });
+                    listeners.push({ ref, handler });
+                });
+                return () => listeners.forEach(({ ref, handler }) => ref.off('value', handler));
+            }, [user, Object.keys(userSessions).join(',')]);
 
             // Session data listener
             useEffect(() => {
@@ -580,7 +599,9 @@
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <h3 className="text-white font-semibold text-lg">{info.name || code}</h3>
-                                                    <p className="text-white/30 text-sm mt-1 tracking-wider">{code}</p>
+                                                    {sessionParticipants[code] && sessionParticipants[code].length > 0 && (
+                                                        <p className="text-white/30 text-sm mt-1">{sessionParticipants[code].join(', ')}</p>
+                                                    )}
                                                 </div>
                                                 <svg className="w-5 h-5 text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
                                             </div>
