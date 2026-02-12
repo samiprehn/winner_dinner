@@ -9,6 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body>
@@ -30,6 +31,7 @@
         
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const auth = firebase.auth();
         
         // Lucide React icons as inline SVG components
         const Heart = ({ className }) => (
@@ -75,52 +77,64 @@
             const [sessionCode, setSessionCode] = useState('');
             const [inputCode, setInputCode] = useState('');
             const [userName, setUserName] = useState('');
+            const [uid, setUid] = useState(null);
+            const [authReady, setAuthReady] = useState(false);
             const [restaurants, setRestaurants] = useState([]);
             const [currentIndex, setCurrentIndex] = useState(0);
             const [newRestaurant, setNewRestaurant] = useState('');
             const [matches, setMatches] = useState([]);
             const [userVotes, setUserVotes] = useState({});
             const [allVotes, setAllVotes] = useState({});
-            const [participants, setParticipants] = useState([]);
+            const [participants, setParticipants] = useState({});
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
 
+            // Sign in anonymously on app load
             useEffect(() => {
-                if (sessionCode && screen === 'swipe') {
+                const unsubscribe = auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        setUid(user.uid);
+                        setAuthReady(true);
+                    } else {
+                        auth.signInAnonymously().catch((err) => {
+                            console.error('Anonymous auth failed:', err);
+                            setError('Authentication failed. Please refresh the page.');
+                        });
+                    }
+                });
+                return () => unsubscribe();
+            }, []);
+
+            useEffect(() => {
+                if (sessionCode && screen === 'swipe' && uid) {
                     const sessionRef = database.ref(`sessions/${sessionCode}`);
                     
-                    // Add user to participants list when they join
-                    const participantsRef = database.ref(`sessions/${sessionCode}/participants`);
-                    participantsRef.once('value', (snapshot) => {
-                        const currentParticipants = snapshot.val() || [];
-                        if (!currentParticipants.includes(userName)) {
-                            participantsRef.set([...currentParticipants, userName]);
-                        }
-                    });
+                    // Add user to participants (keyed by uid, value is display name)
+                    database.ref(`sessions/${sessionCode}/participants/${uid}`).set(userName);
                     
                     sessionRef.on('value', (snapshot) => {
                         const data = snapshot.val();
                         if (data) {
                             setRestaurants(data.restaurants || []);
                             const votes = data.votes || {};
-                            const participantsList = data.participants || [];
+                            const participantsMap = data.participants || {};
                             setAllVotes(votes);
-                            setUserVotes(votes[userName] || {});
-                            setParticipants(participantsList);
-                            calculateMatches(data.restaurants || [], votes, participantsList);
+                            setUserVotes(votes[uid] || {});
+                            setParticipants(participantsMap);
+                            calculateMatches(data.restaurants || [], votes, participantsMap);
                         }
                     });
 
                     return () => sessionRef.off();
                 }
-            }, [sessionCode, screen, userName]);
+            }, [sessionCode, screen, uid, userName]);
 
             const generateCode = () => {
                 return Math.random().toString(36).substring(2, 8).toUpperCase();
             };
 
             const createSession = async () => {
-                if (!userName.trim()) return;
+                if (!userName.trim() || !uid) return;
                 setLoading(true);
                 setError('');
                 
@@ -128,7 +142,7 @@
                 const sessionData = {
                     restaurants: [],
                     votes: {},
-                    participants: []
+                    participants: {}
                 };
                 
                 try {
@@ -144,7 +158,7 @@
             };
 
             const joinSession = async () => {
-                if (!userName.trim() || !inputCode.trim()) return;
+                if (!userName.trim() || !inputCode.trim() || !uid) return;
                 setLoading(true);
                 setError('');
                 
@@ -166,16 +180,15 @@
                 }
             };
 
-            const calculateMatches = (restaurantList, votes, participantsList) => {
-                // Use participants count instead of voters count
-                if (!participantsList || participantsList.length < 2) {
+            const calculateMatches = (restaurantList, votes, participantsMap) => {
+                const participantUids = Object.keys(participantsMap);
+                if (participantUids.length < 2) {
                     setMatches([]);
                     return;
                 }
                 
                 const matched = restaurantList.filter(restaurant => {
-                    // ALL participants must have voted yes
-                    return participantsList.every(participant => votes[participant]?.[restaurant] === true);
+                    return participantUids.every(pUid => votes[pUid]?.[restaurant] === true);
                 });
                 setMatches(matched);
             };
@@ -216,7 +229,7 @@
                 setUserVotes(newUserVotes);
 
                 try {
-                    await database.ref(`sessions/${sessionCode}/votes/${userName}`).set(newUserVotes);
+                    await database.ref(`sessions/${sessionCode}/votes/${uid}`).set(newUserVotes);
                     
                     if (currentIndex < restaurants.length - 1) {
                         setCurrentIndex(currentIndex + 1);
@@ -233,20 +246,39 @@
                 setCurrentIndex(0);
 
                 try {
-                    await database.ref(`sessions/${sessionCode}/votes/${userName}`).set(newUserVotes);
+                    await database.ref(`sessions/${sessionCode}/votes/${uid}`).set(newUserVotes);
                 } catch (err) {
                     console.error('Error resetting votes:', err);
                 }
             };
 
             const getVoterStatusForRestaurant = (restaurant) => {
-                const voters = Object.keys(allVotes);
-                const liked = voters.filter(voter => allVotes[voter][restaurant] === true);
-                const disliked = voters.filter(voter => allVotes[voter][restaurant] === false);
-                const pending = voters.filter(voter => allVotes[voter][restaurant] === undefined);
+                const voterUids = Object.keys(allVotes);
+                const liked = voterUids.filter(vUid => allVotes[vUid][restaurant] === true);
+                const disliked = voterUids.filter(vUid => allVotes[vUid][restaurant] === false);
+                const pending = voterUids.filter(vUid => allVotes[vUid][restaurant] === undefined);
                 
-                return { liked, disliked, pending, total: voters.length };
+                return { liked, disliked, pending, total: voterUids.length };
             };
+
+            // Get participant display names as an array
+            const participantNames = Object.values(participants);
+            const participantUids = Object.keys(participants);
+
+            // Show loading while auth initializes
+            if (!authReady) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
+                            <div className="inline-block p-4 bg-pink-100 rounded-full mb-4">
+                                <Heart className="w-12 h-12 text-pink-600" />
+                            </div>
+                            <h1 className="text-4xl font-bold text-gray-800 mb-2">Winner Dinner</h1>
+                            <p className="text-gray-500 mt-4">Loading...</p>
+                        </div>
+                    </div>
+                );
+            }
 
             if (screen === 'home') {
                 return (
@@ -328,13 +360,13 @@
                                         <p className="text-lg font-semibold text-purple-600">{userName}</p>
                                     </div>
                                 </div>
-                                {participants.length > 0 && (
+                                {participantNames.length > 0 && (
                                     <div className="border-t pt-3">
-                                        <p className="text-xs text-gray-500 mb-2">Participants ({participants.length}):</p>
+                                        <p className="text-xs text-gray-500 mb-2">Participants ({participantNames.length}):</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {participants.map(user => (
-                                                <span key={user} className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">
-                                                    {user}
+                                            {participantNames.map((name, idx) => (
+                                                <span key={idx} className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">
+                                                    {name}
                                                 </span>
                                             ))}
                                         </div>
@@ -355,7 +387,7 @@
                                         <h3 className="text-xl font-bold">Everyone Agrees!</h3>
                                     </div>
                                     <p className="text-sm text-white/90 mb-3">
-                                        {participants.length} participants all liked:
+                                        {participantNames.length} participants all liked:
                                     </p>
                                     <div className="space-y-2">
                                         {matches.map((restaurant, idx) => (
