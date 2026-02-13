@@ -227,6 +227,7 @@
             const [swipeX, setSwipeX] = useState(0);
             const [swiping, setSwiping] = useState(false);
             const touchStartRef = React.useRef(null);
+            const swipeXRef = React.useRef(0);
 
             // Auth listener
             useEffect(() => {
@@ -635,17 +636,23 @@
 
             const handleTouchStart = (e) => {
                 touchStartRef.current = e.touches[0].clientX;
+                swipeXRef.current = 0;
                 setSwiping(true);
             };
             const handleTouchMove = (e) => {
                 if (touchStartRef.current === null) return;
-                setSwipeX(e.touches[0].clientX - touchStartRef.current);
+                e.preventDefault();
+                const dx = e.touches[0].clientX - touchStartRef.current;
+                swipeXRef.current = dx;
+                setSwipeX(dx);
             };
             const handleTouchEnd = () => {
-                if (Math.abs(swipeX) > 80) {
-                    vote(swipeX > 0);
+                const dx = swipeXRef.current;
+                if (Math.abs(dx) > 80) {
+                    vote(dx > 0);
                 }
                 setSwipeX(0);
+                swipeXRef.current = 0;
                 setSwiping(false);
                 touchStartRef.current = null;
             };
@@ -1030,6 +1037,7 @@
                                     style={!hasVoted ? {
                                         transform: `translateX(${swipeX}px) rotate(${swipeX * 0.05}deg)`,
                                         transition: swiping ? 'none' : 'transform 0.3s ease',
+                                        touchAction: 'none',
                                     } : {}}
                                     onTouchStart={!hasVoted ? handleTouchStart : undefined}
                                     onTouchMove={!hasVoted ? handleTouchMove : undefined}
