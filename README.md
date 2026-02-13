@@ -1,43 +1,47 @@
 # Winner Dinner 🍽️❤️
 
-A group restaurant picker app that helps you and your friends (or partner) agree on where to eat dinner. Everyone swipes independently on restaurants, and get matched when everyone likes the same place!
+A group restaurant picker app that helps you and your friends (or partner) agree on where to eat dinner. Everyone votes independently on restaurants, and get matched when everyone likes the same place!
 
 ## Features
 
 - 🔄 **Real-time syncing** between devices using Firebase
-- 📱 **Mobile-friendly** design - works great on phones
-- 👥 **Unlimited users** - works for couples, groups of friends, or entire teams
+- 📱 **Mobile-friendly** design - works great on phones in a browser
+- 👥 **Unlimited users** - works for couples or groups of friends
 - 💑 **Independent voting** - each person votes without seeing others' choices
 - 📊 **Vote tracking** - see how many people have voted on each restaurant
 - ✨ **Instant matches** - see which restaurants everyone agrees on
-- 🔒 **Session-based** - share a simple code to connect with your group
-- 💾 **Persistent storage** - your restaurant list and votes are saved
+- 🔒 **Session-based** - share a code one time to connect with your group
+- 💾 **Persistent storage** - your groups, restaurant lists and votes are saved
 
 ## How to Use
 
 ### Setting Up a Session:
 
 1. **One person creates a session:**
-   - Enter your name
-   - Click "Create New Session"
-   - Share the session code with your group
+   - Click "Create New Dinner Party"
+   - Click copy button next to session code
+   - Share the session code with your group (probably via text)
 
 2. **Everyone else joins:**
-   - Enter their name
    - Enter the session code
-   - Click "Join Session"
+   - Click "Join"
 
 3. **Add restaurants:**
-   - Anyone in the group can add restaurants to the list
+   - Anyone in the group can add restaurants to the list in three ways
    - Type the name and click the + button
+   - Click "browse nearby" to get the 20 closest restaurants to your current location
+   - Click "search" and enter a restaurant name, cuisine type, or keyword (ex: wings)
+   - Enter a zip code or city and state in the second box (optional - leave blank for nearby)
+   - Click the check boxes next to each restaurant you would like to add
+   - Click "add n restaurants" where n is the number of boxes you checked
 
 4. **Vote independently:**
-   - Each person swipes through the restaurants
+   - Each person votes on the restaurants
    - Click ❤️ (Like) or ✕ (Pass) for each one
    - Nobody can see your votes until everyone's done!
 
 5. **See your matches:**
-   - When EVERYONE in the group likes the same restaurant, it appears in the green "Everyone Agrees!" box
+   - When EVERYONE in the group likes the same restaurant, it appears in a green "Everyone Agrees!" box at the top
    - That's where you're going to dinner! 🎉
 
 ### Group Features:
@@ -63,6 +67,7 @@ Visit: `https://samiprehn.github.io/winner_dinner`
 
 - **React** - UI framework
 - **Firebase Realtime Database** - Real-time data syncing
+- **Cloudflare worker** - Server interacting with google maps API
 - **Tailwind CSS** - Styling
 - **GitHub Pages** - Hosting
 
@@ -84,16 +89,12 @@ The app uses Firebase Realtime Database for syncing votes between devices. The F
 
 - Session data is stored in Firebase with a random session code
 - Only people with your session code can see your restaurant list
-- Votes are associated with names you enter (not accounts)
 - No personal information is collected
 - Sessions persist so you can reuse them with the same group
 
 ## Tips
 
-- **Reuse sessions**: Save your session code to vote on the same restaurant list again later
-- **Add gradually**: Start with a few restaurants and add more as you think of them
-- **Mix it up**: Include a variety of cuisines to give everyone options
-- **Be honest**: The app works best when everyone votes authentically!
+- **Reuse sessions**: Click "vote again" to reset votes and use the same list of restaurants another day
 
 ## Contributing
 
