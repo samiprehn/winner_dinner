@@ -222,7 +222,7 @@
             const [searchResults, setSearchResults] = useState([]);
             const [searchLoading, setSearchLoading] = useState(false);
             const [userLocation, setUserLocation] = useState(null);
-            const [searchMode, setSearchMode] = useState(false);
+            const [addMode, setAddMode] = useState('manual');
             const [selectedResults, setSelectedResults] = useState(new Set());
             const [swipeX, setSwipeX] = useState(0);
             const [swiping, setSwiping] = useState(false);
@@ -446,7 +446,7 @@
                     }
                     setSelectedResults(new Set());
                     setSearchResults([]);
-                    setSearchMode(false);
+                    setAddMode('manual');
                     setNewRestaurant('');
                 } catch (err) {
                     setError(`Failed to add: ${err.message}`);
@@ -548,7 +548,7 @@
 
             const doBrowse = async (ll) => {
                 setSearchLoading(true);
-                setSearchMode(true);
+                setAddMode('nearby');
                 setNewRestaurant('');
                 setSelectedResults(new Set());
                 try {
@@ -908,50 +908,46 @@
                             {/* Add Restaurant */}
                             <div className="mb-5 fade-in" style={{animationDelay:'0.1s'}}>
                                 <div className="bg-white/5 rounded-2xl p-4 card-glow">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <p className="text-white/60 text-sm">Add a restaurant</p>
-                                        <div className="flex items-center gap-2">
+                                    <p className="text-white/60 text-sm mb-3">Add a restaurant</p>
+                                    <div className="flex gap-2 mb-3">
+                                        {[['manual', 'Manual'], ['search', 'Search'], ['nearby', 'Nearby']].map(([mode, label]) => (
                                             <button
-                                                onClick={browseNearby}
-                                                className="text-xs px-2 py-1 rounded-lg transition-colors flex items-center gap-1 bg-white/5 text-white/30 hover:text-white/50"
-                                            >
-                                                <MapPinIcon className="w-3 h-3" />
-                                                Browse nearby
-                                            </button>
-                                            <button
+                                                key={mode}
                                                 onClick={() => {
-                                                    setSearchMode(!searchMode);
-                                                    if (!searchMode && !userLocation) requestLocation();
+                                                    setAddMode(mode);
                                                     setSearchResults([]);
                                                     setSelectedResults(new Set());
+                                                    if (mode === 'nearby') { browseNearby(); }
+                                                    else if (mode === 'search' && !userLocation) { requestLocation(); }
                                                 }}
-                                                className={`text-xs px-2 py-1 rounded-lg transition-colors flex items-center gap-1 ${searchMode ? 'bg-purple-500/20 text-purple-400' : 'bg-white/5 text-white/30 hover:text-white/50'}`}
+                                                className={`flex-1 text-xs py-2 rounded-xl font-medium transition-colors ${addMode === mode ? 'bg-white/15 text-white' : 'bg-white/5 text-white/30 hover:text-white/50'}`}
                                             >
-                                                <SearchIcon className="w-3 h-3" />
-                                                Search
+                                                {label}
                                             </button>
+                                        ))}
+                                    </div>
+                                    {addMode !== 'nearby' && (
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder={addMode === 'search' ? "Type, name, or keyword..." : "Restaurant name"}
+                                                value={newRestaurant}
+                                                onChange={(e) => setNewRestaurant(e.target.value)}
+                                                onKeyPress={(e) => e.key === 'Enter' && (addMode === 'search' ? searchRestaurants() : addRestaurant())}
+                                                className="flex-1 min-w-0 bg-white/5 border border-white/10 text-white px-3 py-3 rounded-xl placeholder-white/20"
+                                            />
+                                            {addMode === 'manual' ? (
+                                                <button onClick={() => addRestaurant()} className="bg-white/10 hover:bg-white/15 text-white px-3 py-3 rounded-xl transition-colors flex-shrink-0">
+                                                    <PlusIcon className="w-5 h-5" />
+                                                </button>
+                                            ) : (
+                                                <button onClick={searchRestaurants} className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-3 py-3 rounded-xl transition-colors flex-shrink-0">
+                                                    <SearchIcon className="w-5 h-5" />
+                                                </button>
+                                            )}
                                         </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder={searchMode ? "Type, name, or keyword..." : "Restaurant name"}
-                                            value={newRestaurant}
-                                            onChange={(e) => setNewRestaurant(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && (searchMode ? searchRestaurants() : addRestaurant())}
-                                            className="flex-1 min-w-0 bg-white/5 border border-white/10 text-white px-3 py-3 rounded-xl placeholder-white/20"
-                                        />
-                                        {!searchMode ? (
-                                            <button onClick={() => addRestaurant()} className="bg-white/10 hover:bg-white/15 text-white px-3 py-3 rounded-xl transition-colors flex-shrink-0">
-                                                <PlusIcon className="w-5 h-5" />
-                                            </button>
-                                        ) : (
-                                            <button onClick={searchRestaurants} className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-3 py-3 rounded-xl transition-colors flex-shrink-0">
-                                                <SearchIcon className="w-5 h-5" />
-                                            </button>
-                                        )}
-                                    </div>
-                                    {searchMode && (
+                                    )}
+                                    {addMode === 'search' && (
                                         <div className="mt-2">
                                             <input
                                                 type="text"
@@ -963,8 +959,8 @@
                                             />
                                         </div>
                                     )}
-                                    {/* Search Results */}
-                                    {searchMode && searchResults.length > 0 && (
+                                    {/* Search/Browse Results */}
+                                    {addMode !== 'manual' && searchResults.length > 0 && (
                                         <div className="mt-3">
                                             <div className="flex items-center justify-between mb-2">
                                                 <button
@@ -1011,10 +1007,10 @@
                                             </div>
                                         </div>
                                     )}
-                                    {searchMode && searchLoading && (
+                                    {addMode !== 'manual' && searchLoading && (
                                         <p className="text-white/20 text-xs mt-3 text-center pulse-soft">Searching...</p>
                                     )}
-                                    {searchMode && newRestaurant.length >= 2 && !searchLoading && searchResults.length === 0 && (
+                                    {addMode === 'search' && newRestaurant.length >= 2 && !searchLoading && searchResults.length === 0 && (
                                         <p className="text-white/20 text-xs mt-3 text-center">No results found</p>
                                     )}
                                 </div>
@@ -1045,7 +1041,7 @@
                                 >
                                     <div className="restaurant-card-bg p-10 text-center" style={!hasVoted && swipeX !== 0 ? {
                                         background: swipeX > 0
-                                            ? `linear-gradient(135deg, rgba(22,163,74,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
+                                            ? `linear-gradient(225deg, rgba(22,163,74,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
                                             : `linear-gradient(135deg, rgba(220,38,38,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
                                     } : {}}>
                                         <p className="text-white/30 text-sm mb-3 tracking-wider uppercase">{currentIndex + 1} / {restaurants.length}</p>
@@ -1074,11 +1070,11 @@
                                     ) : (
                                         <div className="p-6">
                                             <div className="flex gap-3">
-                                                <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                    <HeartIcon className="w-7 h-7" /> Like
-                                                </button>
                                                 <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
                                                     <XIcon className="w-7 h-7" /> Pass
+                                                </button>
+                                                <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
+                                                    <HeartIcon className="w-7 h-7" /> Like
                                                 </button>
                                             </div>
                                         </div>
