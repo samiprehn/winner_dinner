@@ -228,6 +228,7 @@
             const [swiping, setSwiping] = useState(false);
             const touchStartRef = React.useRef(null);
             const swipeXRef = React.useRef(0);
+            const cardRef = React.useRef(null);
 
             // Auth listener
             useEffect(() => {
@@ -634,19 +635,19 @@
                 }
             };
 
-            const handleTouchStart = (e) => {
+            const handleTouchStart = React.useCallback((e) => {
                 touchStartRef.current = e.touches[0].clientX;
                 swipeXRef.current = 0;
                 setSwiping(true);
-            };
-            const handleTouchMove = (e) => {
+            }, []);
+            const handleTouchMove = React.useCallback((e) => {
                 if (touchStartRef.current === null) return;
                 e.preventDefault();
                 const dx = e.touches[0].clientX - touchStartRef.current;
                 swipeXRef.current = dx;
                 setSwipeX(dx);
-            };
-            const handleTouchEnd = () => {
+            }, []);
+            const handleTouchEnd = React.useCallback(() => {
                 const dx = swipeXRef.current;
                 if (Math.abs(dx) > 80) {
                     vote(dx > 0);
@@ -655,7 +656,21 @@
                 swipeXRef.current = 0;
                 setSwiping(false);
                 touchStartRef.current = null;
-            };
+            }, [vote]);
+
+            // Attach touch listeners with { passive: false } so preventDefault works on mobile
+            useEffect(() => {
+                const el = cardRef.current;
+                if (!el) return;
+                el.addEventListener('touchstart', handleTouchStart, { passive: true });
+                el.addEventListener('touchmove', handleTouchMove, { passive: false });
+                el.addEventListener('touchend', handleTouchEnd, { passive: true });
+                return () => {
+                    el.removeEventListener('touchstart', handleTouchStart);
+                    el.removeEventListener('touchmove', handleTouchMove);
+                    el.removeEventListener('touchend', handleTouchEnd);
+                };
+            }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
             const getVoterStatus = (restaurant) => {
                 const uids = Object.keys(allVotes);
@@ -1029,15 +1044,13 @@
                                 </div>
                             ) : (
                                 <div
+                                    ref={!hasVoted ? cardRef : undefined}
                                     className="bg-white/5 rounded-2xl overflow-hidden card-glow slide-up"
                                     style={!hasVoted ? {
                                         transform: `translateX(${swipeX}px) rotate(${swipeX * 0.05}deg)`,
                                         transition: swiping ? 'none' : 'transform 0.3s ease',
                                         touchAction: 'none',
                                     } : {}}
-                                    onTouchStart={!hasVoted ? handleTouchStart : undefined}
-                                    onTouchMove={!hasVoted ? handleTouchMove : undefined}
-                                    onTouchEnd={!hasVoted ? handleTouchEnd : undefined}
                                 >
                                     <div className="restaurant-card-bg p-10 text-center" style={!hasVoted && swipeX !== 0 ? {
                                         background: swipeX > 0
