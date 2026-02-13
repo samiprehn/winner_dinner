@@ -192,7 +192,7 @@
         );
 
         // *** REPLACE THIS with your Cloudflare Worker URL ***
-        const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+        const PROXY_URL = 'https://winner-dinner.sami-prehn.workers.dev';
 
         function WinnerDinner() {
             const [user, setUser] = useState(null);
@@ -466,19 +466,22 @@
                 }
             };
 
-            const parseOverpassResults = (data) => {
-                return data.elements
-                    .filter(el => el.tags && el.tags.name)
-                    .map(el => {
-                        const lat = el.lat || el.center?.lat;
-                        const lon = el.lon || el.center?.lon;
-                        const tags = el.tags;
-                        const cuisine = tags.cuisine ? tags.cuisine.split(';').map(c => c.trim().replace(/_/g, ' ')).join(', ') : '';
-                        const addr = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean).join(' ');
-                        const city = tags['addr:city'] || '';
-                        const fullAddr = [addr, city].filter(Boolean).join(', ');
-                        return { name: tags.name, address: fullAddr, category: cuisine, lat, lon };
-                    });
+            const parseGoogleResults = (data, userLat, userLng) => {
+                if (!data.places) return [];
+                return data.places.map(p => {
+                    const lat = p.location?.latitude;
+                    const lng = p.location?.longitude;
+                    let distance = null;
+                    if (lat && lng && userLat && userLng) {
+                        distance = getDistanceMiles(userLat, userLng, lat, lng);
+                    }
+                    return {
+                        name: p.displayName?.text || '',
+                        address: p.formattedAddress || '',
+                        category: p.primaryTypeDisplayName?.text || '',
+                        distance
+                    };
+                }).filter(r => r.name);
             };
 
             const getDistanceMiles = (lat1, lon1, lat2, lon2) => {
@@ -496,38 +499,16 @@
                 }
                 setSearchLoading(true);
                 try {
-                    const searchTerm = newRestaurant.trim().toLowerCase();
+                    const params = new URLSearchParams({ mode: 'search', query: newRestaurant.trim(), limit: '20', radius: '40000' });
                     const ll = userLocation ? userLocation.split(',') : null;
-                    const lat = ll ? ll[0] : '32.7157';
-                    const lon = ll ? ll[1] : '-117.1611';
-                    const query = `[out:json][timeout:15];
-                        (
-                          node["amenity"="restaurant"](around:40000,${lat},${lon});
-                          way["amenity"="restaurant"](around:40000,${lat},${lon});
-                          node["amenity"="fast_food"](around:40000,${lat},${lon});
-                          way["amenity"="fast_food"](around:40000,${lat},${lon});
-                        );
-                        out center 200;`;
-                    const res = await fetch(OVERPASS_URL, {
-                        method: 'POST',
-                        body: `data=${encodeURIComponent(query)}`,
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                    });
+                    if (ll) { params.set('lat', ll[0]); params.set('lng', ll[1]); }
+                    const res = await fetch(`${PROXY_URL}?${params}`);
                     const data = await res.json();
-                    let results = parseOverpassResults(data);
-                    // Filter by search term (name or cuisine)
-                    results = results.filter(r =>
-                        r.name.toLowerCase().includes(searchTerm) ||
-                        r.category.toLowerCase().includes(searchTerm)
-                    );
-                    // Add distance and sort
-                    if (ll) {
-                        results = results.map(r => ({
-                            ...r,
-                            distance: r.lat ? getDistanceMiles(parseFloat(lat), parseFloat(lon), r.lat, r.lon) : null
-                        })).sort((a, b) => (a.distance || 999) - (b.distance || 999));
-                    }
-                    setSearchResults(results.slice(0, 50));
+                    const userLat = ll ? parseFloat(ll[0]) : null;
+                    const userLng = ll ? parseFloat(ll[1]) : null;
+                    let results = parseGoogleResults(data, userLat, userLng);
+                    results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+                    setSearchResults(results);
                 } catch (err) {
                     console.error('Search failed:', err);
                     setError('Search failed. Try again.');
@@ -562,27 +543,13 @@
                 setNewRestaurant('');
                 setSelectedResults(new Set());
                 try {
-                    const [lat, lon] = ll.split(',');
-                    const query = `[out:json][timeout:15];
-                        (
-                          node["amenity"="restaurant"](around:40000,${lat},${lon});
-                          way["amenity"="restaurant"](around:40000,${lat},${lon});
-                          node["amenity"="fast_food"](around:40000,${lat},${lon});
-                          way["amenity"="fast_food"](around:40000,${lat},${lon});
-                        );
-                        out center 50;`;
-                    const res = await fetch(OVERPASS_URL, {
-                        method: 'POST',
-                        body: `data=${encodeURIComponent(query)}`,
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                    });
+                    const [lat, lng] = ll.split(',');
+                    const params = new URLSearchParams({ mode: 'browse', lat, lng, limit: '20', radius: '40000' });
+                    const res = await fetch(`${PROXY_URL}?${params}`);
                     const data = await res.json();
-                    let results = parseOverpassResults(data);
-                    results = results.map(r => ({
-                        ...r,
-                        distance: r.lat ? getDistanceMiles(parseFloat(lat), parseFloat(lon), r.lat, r.lon) : null
-                    })).sort((a, b) => (a.distance || 999) - (b.distance || 999));
-                    setSearchResults(results.slice(0, 50));
+                    let results = parseGoogleResults(data, parseFloat(lat), parseFloat(lng));
+                    results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+                    setSearchResults(results);
                 } catch (err) {
                     console.error('Browse failed:', err);
                     setError('Failed to load nearby restaurants.');
