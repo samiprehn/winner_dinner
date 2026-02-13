@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Winner Dinner - Restaurant Picker</title>
+    <link rel="icon" type="image/png" href="windin_logo.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -87,6 +88,7 @@
     </style>
 </head>
 <body>
+    <p style="display:none;">Impact-Site-Verification: 6165e86a-9da3-43a1-bd1e-837ae43cc438</p>
     <div class="bg-grain"></div>
     <div id="root"></div>
     
@@ -689,7 +691,7 @@
                 return (
                     <div className="min-h-screen flex items-center justify-center relative z-10">
                         <div className="text-center fade-in">
-                            <HeartIcon className="w-16 h-16 text-rose-500 pulse-soft mx-auto mb-6" />
+                            <img src="windin_logo.png" className="w-24 h-24 mx-auto mb-6 pulse-soft" alt="Winner Dinner" />
                             <h1 className="font-display text-4xl text-white mb-2">Winner Dinner</h1>
                             <p className="text-white/40">Loading...</p>
                         </div>
@@ -703,7 +705,7 @@
                     <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
                         <div className="w-full max-w-sm fade-in">
                             <div className="text-center mb-10">
-                                <HeartIcon className="w-16 h-16 text-rose-500 mx-auto mb-5" />
+                                <img src="windin_logo.png" className="w-24 h-24 mx-auto mb-5" alt="Winner Dinner" />
                                 <h1 className="font-display text-5xl text-white mb-3">Winner Dinner</h1>
                                 <p className="text-white/50 text-lg">Vote together, eat together</p>
                             </div>
@@ -824,7 +826,7 @@
                                 </div>
                             ) : (
                                 <div className="text-center py-12 fade-in" style={{animationDelay:'0.15s'}}>
-                                    <HeartIcon className="w-12 h-12 text-white/10 mx-auto mb-4" />
+                                    <img src="windin_logo.png" className="w-16 h-16 mx-auto mb-4 opacity-30" alt="Winner Dinner" />
                                     <p className="text-white/30">No sessions yet</p>
                                     <p className="text-white/15 text-sm mt-1">Create one or join with a code</p>
                                 </div>
