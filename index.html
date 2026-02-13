@@ -504,7 +504,7 @@
                 setSearchLoading(true);
                 try {
                     const locText = searchLocation.trim();
-                    const query = locText ? `${newRestaurant.trim()} ${locText}` : newRestaurant.trim();
+                    const query = locText ? `${newRestaurant.trim()} near ${locText}` : newRestaurant.trim();
                     const params = new URLSearchParams({ mode: 'search', query, limit: '20', radius: '32187' });
                     const ll = userLocation ? userLocation.split(',') : null;
                     if (!locText && ll) { params.set('lat', ll[0]); params.set('lng', ll[1]); }
@@ -513,7 +513,9 @@
                     const userLat = ll ? parseFloat(ll[0]) : null;
                     const userLng = ll ? parseFloat(ll[1]) : null;
                     let results = parseGoogleResults(data, userLat, userLng);
-                    results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+                    if (!locText) {
+                        results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+                    }
                     setSearchResults(results);
                 } catch (err) {
                     console.error('Search failed:', err);
