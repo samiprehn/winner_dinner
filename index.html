@@ -499,7 +499,7 @@
                 }
                 setSearchLoading(true);
                 try {
-                    const params = new URLSearchParams({ mode: 'search', query: newRestaurant.trim(), limit: '20', radius: '40000' });
+                    const params = new URLSearchParams({ mode: 'search', query: newRestaurant.trim(), limit: '20', radius: '32187' });
                     const ll = userLocation ? userLocation.split(',') : null;
                     if (ll) { params.set('lat', ll[0]); params.set('lng', ll[1]); }
                     const res = await fetch(`${PROXY_URL}?${params}`);
@@ -544,7 +544,7 @@
                 setSelectedResults(new Set());
                 try {
                     const [lat, lng] = ll.split(',');
-                    const params = new URLSearchParams({ mode: 'browse', lat, lng, limit: '20', radius: '40000' });
+                    const params = new URLSearchParams({ mode: 'browse', lat, lng, limit: '20', radius: '32187' });
                     const res = await fetch(`${PROXY_URL}?${params}`);
                     const data = await res.json();
                     let results = parseGoogleResults(data, parseFloat(lat), parseFloat(lng));
@@ -671,7 +671,7 @@
                                 <GoogleIcon className="w-5 h-5" />
                                 {loading ? 'Signing in...' : 'Continue with Google'}
                             </button>
-                            <p className="text-white/20 text-xs text-center mt-8">Sign in to create and join dinner sessions</p>
+
                         </div>
                     </div>
                 );
@@ -685,7 +685,7 @@
                         <div className="max-w-md mx-auto pt-6">
                             <div className="flex items-center justify-between mb-8 fade-in">
                                 <div>
-                                    <h1 className="font-display text-3xl text-white">Your Dinner Parties</h1>
+                                    <h1 className="font-display text-3xl text-white">Winner Dinner</h1>
                                     <p className="text-white/40 text-sm mt-1">Hey, {user.displayName?.split(' ')[0] || 'there'}</p>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -873,9 +873,9 @@
                                 </div>
                             )}
 
-                            {/* Add & Remove Restaurants */}
-                            <div className="flex gap-2 mb-5 fade-in" style={{animationDelay:'0.1s'}}>
-                                <div className="min-w-0 flex-1 bg-white/5 rounded-2xl p-4 card-glow">
+                            {/* Add Restaurant */}
+                            <div className="mb-5 fade-in" style={{animationDelay:'0.1s'}}>
+                                <div className="bg-white/5 rounded-2xl p-4 card-glow">
                                     <div className="flex items-center justify-between mb-3">
                                         <p className="text-white/60 text-sm">Add a restaurant</p>
                                         <div className="flex items-center gap-2">
@@ -975,36 +975,7 @@
                                         <p className="text-white/20 text-xs mt-3 text-center">No results found</p>
                                     )}
                                 </div>
-                                {restaurants.length > 0 && (
-                                    <button
-                                        onClick={() => setShowRestaurantList(!showRestaurantList)}
-                                        className={`flex-shrink-0 bg-white/5 rounded-2xl px-3 card-glow flex flex-col items-center justify-center gap-1.5 transition-colors ${showRestaurantList ? 'bg-red-500/10 border border-red-500/20' : 'hover:bg-white/8'}`}
-                                    >
-                                        <TrashIcon className={`w-5 h-5 ${showRestaurantList ? 'text-red-400' : 'text-white/30'}`} />
-                                        <span className={`text-xs font-medium ${showRestaurantList ? 'text-red-400' : 'text-white/30'}`}>Remove</span>
-                                    </button>
-                                )}
                             </div>
-                            {showRestaurantList && restaurants.length > 0 && (
-                                <div className="bg-white/5 rounded-2xl p-5 mb-5 card-glow fade-in">
-                                    <p className="text-white/30 text-xs uppercase tracking-wider mb-3">All restaurants ({restaurants.length})</p>
-                                    <div className="space-y-2">
-                                        {restaurants.map((r, i) => (
-                                            <div key={i} className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-2.5">
-                                                <span className="text-white/70 text-sm">{r}</span>
-                                                <button
-                                                    onClick={() => deleteRestaurant(r)}
-                                                    className="text-white/20 hover:text-red-400 transition-colors"
-                                                    title="Remove restaurant"
-                                                >
-                                                    <TrashIcon className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
                             {/* Voting */}
                             {restaurants.length === 0 ? (
                                 <div className="text-center py-16 fade-in" style={{animationDelay:'0.15s'}}>
@@ -1052,6 +1023,37 @@
                                                 <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
                                                     <HeartIcon className="w-7 h-7" /> Like
                                                 </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Remove Restaurants */}
+                            {restaurants.length > 0 && (
+                                <div className="mt-5 fade-in">
+                                    <button
+                                        onClick={() => setShowRestaurantList(!showRestaurantList)}
+                                        className={`w-full bg-white/5 rounded-2xl px-4 py-3 card-glow flex items-center justify-center gap-2 transition-colors ${showRestaurantList ? 'bg-red-500/10 border border-red-500/20' : 'hover:bg-white/8'}`}
+                                    >
+                                        <TrashIcon className={`w-4 h-4 ${showRestaurantList ? 'text-red-400' : 'text-white/30'}`} />
+                                        <span className={`text-sm font-medium ${showRestaurantList ? 'text-red-400' : 'text-white/30'}`}>Remove Restaurants ({restaurants.length})</span>
+                                    </button>
+                                    {showRestaurantList && (
+                                        <div className="bg-white/5 rounded-2xl p-5 mt-3 card-glow fade-in">
+                                            <div className="space-y-2">
+                                                {restaurants.map((r, i) => (
+                                                    <div key={i} className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-2.5">
+                                                        <span className="text-white/70 text-sm">{r}</span>
+                                                        <button
+                                                            onClick={() => deleteRestaurant(r)}
+                                                            className="text-white/20 hover:text-red-400 transition-colors"
+                                                            title="Remove restaurant"
+                                                        >
+                                                            <TrashIcon className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     )}
