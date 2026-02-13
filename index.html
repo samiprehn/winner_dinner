@@ -224,6 +224,9 @@
             const [userLocation, setUserLocation] = useState(null);
             const [searchMode, setSearchMode] = useState(false);
             const [selectedResults, setSelectedResults] = useState(new Set());
+            const [swipeX, setSwipeX] = useState(0);
+            const [swiping, setSwiping] = useState(false);
+            const touchStartRef = React.useRef(null);
 
             // Auth listener
             useEffect(() => {
@@ -628,6 +631,23 @@
                 }
             };
 
+            const handleTouchStart = (e) => {
+                touchStartRef.current = e.touches[0].clientX;
+                setSwiping(true);
+            };
+            const handleTouchMove = (e) => {
+                if (touchStartRef.current === null) return;
+                setSwipeX(e.touches[0].clientX - touchStartRef.current);
+            };
+            const handleTouchEnd = () => {
+                if (Math.abs(swipeX) > 80) {
+                    vote(swipeX > 0);
+                }
+                setSwipeX(0);
+                setSwiping(false);
+                touchStartRef.current = null;
+            };
+
             const getVoterStatus = (restaurant) => {
                 const uids = Object.keys(allVotes);
                 return {
@@ -870,7 +890,7 @@
                                     <p className="text-green-400/60 text-sm mb-3">All {participantNames.length} participants liked:</p>
                                     {matches.map((r, i) => (
                                         <div key={i} className="bg-green-400/10 rounded-xl px-4 py-3 mb-2 last:mb-0">
-                                            <p className="text-green-300 font-semibold">{r}</p>
+                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 font-semibold hover:underline">{r}</a>
                                         </div>
                                     ))}
                                 </div>
@@ -1004,10 +1024,23 @@
                                     <button onClick={resetVotes} className="btn-primary text-white px-8 py-3 rounded-xl font-semibold">Vote Again</button>
                                 </div>
                             ) : (
-                                <div className="bg-white/5 rounded-2xl overflow-hidden card-glow slide-up">
-                                    <div className="restaurant-card-bg p-10 text-center">
+                                <div
+                                    className="bg-white/5 rounded-2xl overflow-hidden card-glow slide-up"
+                                    style={!hasVoted ? {
+                                        transform: `translateX(${swipeX}px) rotate(${swipeX * 0.05}deg)`,
+                                        transition: swiping ? 'none' : 'transform 0.3s ease',
+                                    } : {}}
+                                    onTouchStart={!hasVoted ? handleTouchStart : undefined}
+                                    onTouchMove={!hasVoted ? handleTouchMove : undefined}
+                                    onTouchEnd={!hasVoted ? handleTouchEnd : undefined}
+                                >
+                                    <div className="restaurant-card-bg p-10 text-center" style={!hasVoted && swipeX !== 0 ? {
+                                        background: swipeX > 0
+                                            ? `linear-gradient(135deg, rgba(22,163,74,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
+                                            : `linear-gradient(135deg, rgba(220,38,38,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
+                                    } : {}}>
                                         <p className="text-white/30 text-sm mb-3 tracking-wider uppercase">{currentIndex + 1} / {restaurants.length}</p>
-                                        <h2 className="font-display text-4xl text-white mb-4">{cur}</h2>
+                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer" className="font-display text-4xl text-white mb-4 block hover:underline">{cur}</a>
                                         {hasVoted && status && status.total > 1 && (
                                             <div className="bg-white/10 rounded-xl px-4 py-2 inline-block">
                                                 <p className="text-sm text-white/60">
@@ -1032,11 +1065,11 @@
                                     ) : (
                                         <div className="p-6">
                                             <div className="flex gap-3">
-                                                <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                    <XIcon className="w-7 h-7" /> Pass
-                                                </button>
                                                 <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
                                                     <HeartIcon className="w-7 h-7" /> Like
+                                                </button>
+                                                <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
+                                                    <XIcon className="w-7 h-7" /> Pass
                                                 </button>
                                             </div>
                                         </div>
