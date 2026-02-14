@@ -7,25 +7,21 @@
     <link rel="icon" type="image/png" sizes="192x192" href="windin_logo.png?v=1">
     <link rel="apple-touch-icon" href="windin_logo.png?v=1">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8254595620906412" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'DM Sans', sans-serif; }
         .font-display { font-family: 'Playfair Display', serif; }
-        
+
         body {
             background: #0f0f0f;
             min-height: 100vh;
+            margin: 0;
         }
-        
+
         .bg-grain {
             position: fixed;
             inset: 0;
@@ -34,68 +30,121 @@
             pointer-events: none;
             z-index: 0;
         }
-        
-        .card-glow {
-            box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 8px 40px rgba(0,0,0,0.4);
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out both;
         }
-        
-        .match-glow {
-            box-shadow: 0 0 30px rgba(74, 222, 128, 0.15), 0 0 0 1px rgba(74, 222, 128, 0.2);
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #e11d48, #9333ea);
-            transition: all 0.2s;
-        }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(225, 29, 72, 0.3); }
-        .btn-primary:active { transform: translateY(0); }
-        
-        .btn-like {
-            background: linear-gradient(135deg, #16a34a, #22c55e);
-            transition: all 0.15s;
-        }
-        .btn-like:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(22, 163, 74, 0.3); }
-        .btn-like:active { transform: scale(0.98); }
-        
-        .btn-pass {
-            background: linear-gradient(135deg, #dc2626, #ef4444);
-            transition: all 0.15s;
-        }
-        .btn-pass:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(220, 38, 38, 0.3); }
-        .btn-pass:active { transform: scale(0.98); }
-        
-        .fade-in { animation: fadeIn 0.4s ease-out both; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
-        .slide-up { animation: slideUp 0.5s ease-out both; }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .pulse-soft { animation: pulseSoft 2.5s ease-in-out infinite; }
-        @keyframes pulseSoft {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+
+        .container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            position: relative;
+            z-index: 10;
         }
 
-        input:focus { outline: none; }
-        
-        .restaurant-card-bg {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        .content {
+            width: 100%;
+            max-width: 24rem;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .logo {
+            width: 13rem;
+            height: 13rem;
+            margin: 0 auto 1.25rem;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: white;
+            margin: 0 0 0.75rem;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.125rem;
+            margin: 0;
+        }
+
+        .error-box {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .google-btn {
+            width: 100%;
+            background: white;
+            color: #1f2937;
+            padding: 1rem;
+            border-radius: 1rem;
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .google-btn:hover {
+            background: #f9fafb;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+        .google-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .google-icon {
+            width: 1.25rem;
+            height: 1.25rem;
         }
     </style>
 </head>
 <body>
     <div class="bg-grain"></div>
-    <div id="root"></div>
-    
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-        
+    <div class="container">
+        <div class="content fade-in">
+            <div class="logo-section">
+                <img src="windin_logo.png" class="logo" alt="Winner Dinner">
+                <h1>Winner Dinner</h1>
+                <p class="subtitle">Vote together, eat together</p>
+            </div>
+            <div class="error-box" id="error"></div>
+            <button class="google-btn" id="signInBtn" onclick="signIn()">
+                <svg class="google-icon" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Continue with Google
+            </button>
+        </div>
+    </div>
+
+    <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBXuNDKYtP7DhF3r1V5x0q5SlrK-TO6TAM",
             authDomain: "winner-dinner-3e154.firebaseapp.com",
@@ -105,1039 +154,36 @@
             messagingSenderId: "1063162162261",
             appId: "1:1063162162261:web:44ff6dcf320a8142fc78dc"
         };
-        
+
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
         const auth = firebase.auth();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-        // Icons
-        const HeartIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-        );
-        const XIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-        );
-        const PlusIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-        );
-        const SparklesIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-                <path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>
-            </svg>
-        );
-        const CheckIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-            </svg>
-        );
-        const CopyIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-        );
-        const ArrowLeftIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
-            </svg>
-        );
-        const LogOutIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-        );
-        const UsersIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-        );
-        const GoogleIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-        );
-        const PencilIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>
-            </svg>
-        );
-        const TrashIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-        );
-        const ListIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-                <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
-        );
-        const SearchIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-        );
-        const MapPinIcon = ({ className }) => (
-            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-            </svg>
-        );
-
-        // *** REPLACE THIS with your Cloudflare Worker URL ***
-        const PROXY_URL = 'https://winner-dinner.sami-prehn.workers.dev';
-
-        function WinnerDinner() {
-            const [user, setUser] = useState(null);
-            const [authLoading, setAuthLoading] = useState(true);
-            const [screen, setScreen] = useState('sessions');
-            const [sessionCode, setSessionCode] = useState('');
-            const [inputCode, setInputCode] = useState('');
-            const [sessionName, setSessionName] = useState('');
-            const [userSessions, setUserSessions] = useState({});
-            const [restaurants, setRestaurants] = useState([]);
-            const [currentIndex, setCurrentIndex] = useState(0);
-            const [newRestaurant, setNewRestaurant] = useState('');
-            const [searchLocation, setSearchLocation] = useState('');
-            const [matches, setMatches] = useState([]);
-            const [userVotes, setUserVotes] = useState({});
-            const [allVotes, setAllVotes] = useState({});
-            const [participants, setParticipants] = useState({});
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState('');
-            const [copied, setCopied] = useState(false);
-            const [showCreate, setShowCreate] = useState(false);
-            const [currentSessionName, setCurrentSessionName] = useState('');
-            const [editingName, setEditingName] = useState(false);
-            const [editNameValue, setEditNameValue] = useState('');
-            const [showRestaurantList, setShowRestaurantList] = useState(false);
-            const [sessionParticipants, setSessionParticipants] = useState({});
-            const [searchResults, setSearchResults] = useState([]);
-            const [searchLoading, setSearchLoading] = useState(false);
-            const [userLocation, setUserLocation] = useState(null);
-            const [addMode, setAddMode] = useState('manual');
-            const [selectedResults, setSelectedResults] = useState(new Set());
-            const [swipeX, setSwipeX] = useState(0);
-            const [swiping, setSwiping] = useState(false);
-            const touchStartRef = React.useRef(null);
-            const swipeXRef = React.useRef(0);
-            const cardRef = React.useRef(null);
-
-            // Auth listener
-            useEffect(() => {
-                const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
-                    setUser(firebaseUser);
-                    setAuthLoading(false);
-                });
-                return () => unsubscribe();
-            }, []);
-
-            // Load user's sessions list
-            useEffect(() => {
-                if (!user) return;
-                const ref = database.ref(`users/${user.uid}/sessions`);
-                ref.on('value', (snap) => setUserSessions(snap.val() || {}));
-                return () => ref.off();
-            }, [user]);
-
-            // Load participants and names for each session (for home screen display)
-            useEffect(() => {
-                if (!user) return;
-                const codes = Object.keys(userSessions);
-                if (codes.length === 0) { setSessionParticipants({}); return; }
-                
-                const listeners = [];
-                codes.forEach(code => {
-                    const ref = database.ref(`sessions/${code}`);
-                    const handler = ref.on('value', (snap) => {
-                        const data = snap.val() || {};
-                        setSessionParticipants(prev => ({
-                            ...prev,
-                            [code]: {
-                                names: Object.values(data.participants || {}),
-                                sessionName: data.name || code
-                            }
-                        }));
-                    });
-                    listeners.push({ ref, handler });
-                });
-                return () => listeners.forEach(({ ref, handler }) => ref.off('value', handler));
-            }, [user, Object.keys(userSessions).join(',')]);
-
-            // Session data listener
-            useEffect(() => {
-                if (!sessionCode || screen !== 'swipe' || !user) return;
-                
-                const sessionRef = database.ref(`sessions/${sessionCode}`);
-                
-                // Register as participant
-                database.ref(`sessions/${sessionCode}/participants/${user.uid}`)
-                    .set(user.displayName || 'Anonymous')
-                    .catch(err => console.error('Participant write failed:', err));
-                
-                sessionRef.on('value', (snap) => {
-                    const data = snap.val();
-                    if (data) {
-                        setRestaurants(data.restaurants || []);
-                        setCurrentSessionName(data.name || sessionCode);
-                        const votes = data.votes || {};
-                        const parts = data.participants || {};
-                        setAllVotes(votes);
-                        setUserVotes(votes[user.uid] || {});
-                        setParticipants(parts);
-                        calculateMatches(data.restaurants || [], votes, parts);
-                    }
-                });
-                return () => sessionRef.off();
-            }, [sessionCode, screen, user]);
-
-            const signInWithGoogle = async () => {
-                setLoading(true);
-                setError('');
-                try {
-                    await auth.signInWithPopup(googleProvider);
-                } catch (err) {
-                    if (err.code !== 'auth/popup-closed-by-user') {
-                        setError('Sign in failed. Please try again.');
-                    }
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            const signOut = async () => {
-                await auth.signOut();
-                setScreen('sessions');
-                setSessionCode('');
-            };
-
-            const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
-
-            const createSession = async () => {
-                if (!sessionName.trim() || !user || loading) return;
-                setLoading(true);
-                setError('');
-                const code = generateCode();
-                try {
-                    await database.ref(`sessions/${code}`).set({
-                        name: sessionName.trim(),
-                        createdBy: user.uid,
-                        restaurants: [],
-                        votes: {},
-                        participants: { [user.uid]: user.displayName || 'Anonymous' }
-                    });
-                    await database.ref(`users/${user.uid}/sessions/${code}`).set({
-                        name: sessionName.trim(),
-                        joinedAt: Date.now()
-                    });
-                    setSessionCode(code);
-                    setSessionName('');
-                    setShowCreate(false);
-                    setCurrentIndex(0);
-                    setScreen('swipe');
-                } catch (err) {
-                    setError('Failed to create session.');
-                    console.error(err);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            const joinSession = async () => {
-                if (!inputCode.trim() || !user || loading) return;
-                setLoading(true);
-                setError('');
-                const code = inputCode.toUpperCase().trim();
-                try {
-                    const snap = await database.ref(`sessions/${code}`).once('value');
-                    if (snap.exists()) {
-                        const data = snap.val();
-                        await database.ref(`users/${user.uid}/sessions/${code}`).set({
-                            name: data.name || code,
-                            joinedAt: Date.now()
-                        });
-                        setSessionCode(code);
-                        setInputCode('');
-                        setCurrentIndex(0);
-                        setScreen('swipe');
-                    } else {
-                        setError('Session not found. Check the code.');
-                    }
-                } catch (err) {
-                    setError('Could not join session.');
-                    console.error(err);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            const openSession = (code) => {
-                setSessionCode(code);
-                setCurrentIndex(0);
-                setError('');
-                setScreen('swipe');
-            };
-
-            const goBack = () => {
-                setScreen('sessions');
-                setSessionCode('');
-                setError('');
-            };
-
-            const calculateMatches = (restaurantList, votes, parts) => {
-                const uids = Object.keys(parts);
-                if (uids.length < 2) { setMatches([]); return; }
-                setMatches(restaurantList.filter(r => uids.every(u => votes[u]?.[r] === true)));
-            };
-
-            const addRestaurant = async (nameOverride) => {
-                const name = (nameOverride || newRestaurant).trim();
-                if (!name) return;
-                setError('');
-                try {
-                    const snap = await database.ref(`sessions/${sessionCode}`).once('value');
-                    const data = snap.val();
-                    if (!data) { setError('Session not found.'); return; }
-                    const list = data.restaurants || [];
-                    if (!list.includes(name)) {
-                        list.push(name);
-                        await database.ref(`sessions/${sessionCode}/restaurants`).set(list);
-                        if (!nameOverride) setNewRestaurant('');
-                    } else {
-                        setError('Already in the list.');
-                    }
-                } catch (err) {
-                    setError(`Failed to add: ${err.message}`);
-                }
-            };
-
-            const toggleResult = (name) => {
-                setSelectedResults(prev => {
-                    const next = new Set(prev);
-                    if (next.has(name)) next.delete(name);
-                    else next.add(name);
-                    return next;
-                });
-            };
-
-            const addSelectedRestaurants = async () => {
-                if (selectedResults.size === 0) return;
-                setError('');
-                try {
-                    const snap = await database.ref(`sessions/${sessionCode}`).once('value');
-                    const data = snap.val();
-                    if (!data) { setError('Session not found.'); return; }
-                    const list = data.restaurants || [];
-                    let added = 0;
-                    selectedResults.forEach(name => {
-                        if (!list.includes(name)) {
-                            list.push(name);
-                            added++;
-                        }
-                    });
-                    if (added > 0) {
-                        await database.ref(`sessions/${sessionCode}/restaurants`).set(list);
-                    }
-                    setSelectedResults(new Set());
-                    setSearchResults([]);
-                    setAddMode('manual');
-                    setNewRestaurant('');
-                } catch (err) {
-                    setError(`Failed to add: ${err.message}`);
-                }
-            };
-
-            const selectAllResults = () => {
-                if (selectedResults.size === searchResults.length) {
-                    setSelectedResults(new Set());
-                } else {
-                    setSelectedResults(new Set(searchResults.map(r => r.name)));
-                }
-            };
-
-            const requestLocation = () => {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => setUserLocation(`${pos.coords.latitude},${pos.coords.longitude}`),
-                        () => console.log('Location denied, search will work without it'),
-                        { timeout: 5000 }
-                    );
-                }
-            };
-
-            const parseGoogleResults = (data, userLat, userLng) => {
-                if (!data.places) return [];
-                return data.places.map(p => {
-                    const lat = p.location?.latitude;
-                    const lng = p.location?.longitude;
-                    let distance = null;
-                    if (lat && lng && userLat && userLng) {
-                        distance = getDistanceMiles(userLat, userLng, lat, lng);
-                    }
-                    return {
-                        name: p.displayName?.text || '',
-                        address: p.formattedAddress || '',
-                        category: p.primaryTypeDisplayName?.text || '',
-                        distance
-                    };
-                }).filter(r => r.name);
-            };
-
-            const getDistanceMiles = (lat1, lon1, lat2, lon2) => {
-                const R = 3958.8;
-                const dLat = (lat2 - lat1) * Math.PI / 180;
-                const dLon = (lon2 - lon1) * Math.PI / 180;
-                const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
-                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            };
-
-            const searchRestaurants = async () => {
-                if (newRestaurant.trim().length < 2) {
-                    setSearchResults([]);
-                    return;
-                }
-                setSearchLoading(true);
-                try {
-                    const locText = searchLocation.trim();
-                    const query = locText ? `${newRestaurant.trim()} near ${locText}` : newRestaurant.trim();
-                    const params = new URLSearchParams({ mode: 'search', query, limit: '20', radius: '32187' });
-                    const ll = userLocation ? userLocation.split(',') : null;
-                    if (!locText && ll) { params.set('lat', ll[0]); params.set('lng', ll[1]); }
-                    const res = await fetch(`${PROXY_URL}?${params}`);
-                    const data = await res.json();
-                    const userLat = ll ? parseFloat(ll[0]) : null;
-                    const userLng = ll ? parseFloat(ll[1]) : null;
-                    let results = parseGoogleResults(data, userLat, userLng);
-                    if (!locText) {
-                        results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
-                    }
-                    setSearchResults(results);
-                } catch (err) {
-                    console.error('Search failed:', err);
-                    setError('Search failed. Try again.');
-                } finally {
-                    setSearchLoading(false);
-                }
-            };
-
-            const browseNearby = async () => {
-                if (!userLocation) {
-                    if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                            (pos) => {
-                                const ll = `${pos.coords.latitude},${pos.coords.longitude}`;
-                                setUserLocation(ll);
-                                doBrowse(ll);
-                            },
-                            () => setError('Location access needed to browse nearby restaurants.'),
-                            { timeout: 5000 }
-                        );
-                    } else {
-                        setError('Location not supported on this device.');
-                    }
-                    return;
-                }
-                doBrowse(userLocation);
-            };
-
-            const doBrowse = async (ll) => {
-                setSearchLoading(true);
-                setAddMode('nearby');
-                setNewRestaurant('');
-                setSelectedResults(new Set());
-                try {
-                    const [lat, lng] = ll.split(',');
-                    const params = new URLSearchParams({ mode: 'browse', lat, lng, limit: '20', radius: '32187' });
-                    const res = await fetch(`${PROXY_URL}?${params}`);
-                    const data = await res.json();
-                    let results = parseGoogleResults(data, parseFloat(lat), parseFloat(lng));
-                    results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
-                    setSearchResults(results);
-                } catch (err) {
-                    console.error('Browse failed:', err);
-                    setError('Failed to load nearby restaurants.');
-                } finally {
-                    setSearchLoading(false);
-                }
-            };
-
-            const deleteRestaurant = async (restaurantName) => {
-                setError('');
-                try {
-                    const snap = await database.ref(`sessions/${sessionCode}`).once('value');
-                    const data = snap.val();
-                    if (!data) return;
-                    const list = (data.restaurants || []).filter(r => r !== restaurantName);
-                    await database.ref(`sessions/${sessionCode}/restaurants`).set(list);
-                    
-                    // Clean up votes for this restaurant from all voters
-                    const votes = data.votes || {};
-                    const updates = {};
-                    Object.keys(votes).forEach(voterUid => {
-                        if (votes[voterUid] && votes[voterUid][restaurantName] !== undefined) {
-                            updates[`votes/${voterUid}/${restaurantName}`] = null;
-                        }
-                    });
-                    if (Object.keys(updates).length > 0) {
-                        await database.ref(`sessions/${sessionCode}`).update(updates);
-                    }
-                    
-                    // Adjust current index if needed
-                    if (currentIndex >= list.length && list.length > 0) {
-                        setCurrentIndex(list.length - 1);
-                    } else if (list.length === 0) {
-                        setCurrentIndex(0);
-                    }
-                } catch (err) {
-                    setError(`Failed to delete: ${err.message}`);
-                }
-            };
-
-            const renameSession = async () => {
-                if (!editNameValue.trim()) return;
-                setError('');
-                try {
-                    const newName = editNameValue.trim();
-                    await database.ref(`sessions/${sessionCode}/name`).set(newName);
-                    await database.ref(`users/${user.uid}/sessions/${sessionCode}/name`).set(newName);
-                    setEditingName(false);
-                } catch (err) {
-                    setError(`Failed to rename: ${err.message}`);
-                }
-            };
-
-            const vote = async (liked) => {
-                const restaurant = restaurants[currentIndex];
-                const next = { ...userVotes, [restaurant]: liked };
-                setUserVotes(next);
-                try {
-                    await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).set(next);
-                    if (currentIndex < restaurants.length - 1) setCurrentIndex(currentIndex + 1);
-                } catch (err) {
-                    setError('Failed to save vote.');
-                }
-            };
-
-            const resetVotes = async () => {
-                setUserVotes({});
-                setCurrentIndex(0);
-                try {
-                    await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).set({});
-                } catch (err) {
-                    console.error(err);
-                }
-            };
-
-            const handleTouchStart = React.useCallback((e) => {
-                touchStartRef.current = e.touches[0].clientX;
-                swipeXRef.current = 0;
-                setSwiping(true);
-            }, []);
-            const handleTouchMove = React.useCallback((e) => {
-                if (touchStartRef.current === null) return;
-                e.preventDefault();
-                const dx = e.touches[0].clientX - touchStartRef.current;
-                swipeXRef.current = dx;
-                setSwipeX(dx);
-            }, []);
-            const handleTouchEnd = React.useCallback(() => {
-                const dx = swipeXRef.current;
-                if (Math.abs(dx) > 80) {
-                    vote(dx > 0);
-                }
-                setSwipeX(0);
-                swipeXRef.current = 0;
-                setSwiping(false);
-                touchStartRef.current = null;
-            }, [vote]);
-
-            // Attach touch listeners with { passive: false } so preventDefault works on mobile
-            useEffect(() => {
-                const el = cardRef.current;
-                if (!el) return;
-                el.addEventListener('touchstart', handleTouchStart, { passive: true });
-                el.addEventListener('touchmove', handleTouchMove, { passive: false });
-                el.addEventListener('touchend', handleTouchEnd, { passive: true });
-                return () => {
-                    el.removeEventListener('touchstart', handleTouchStart);
-                    el.removeEventListener('touchmove', handleTouchMove);
-                    el.removeEventListener('touchend', handleTouchEnd);
-                };
-            }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
-
-            const getVoterStatus = (restaurant) => {
-                const uids = Object.keys(allVotes);
-                return {
-                    liked: uids.filter(u => allVotes[u][restaurant] === true).length,
-                    disliked: uids.filter(u => allVotes[u][restaurant] === false).length,
-                    pending: uids.filter(u => allVotes[u][restaurant] === undefined).length,
-                    total: uids.length
-                };
-            };
-
-            const participantNames = Object.values(participants);
-
-            // --- LOADING ---
-            if (authLoading) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center relative z-10">
-                        <div className="text-center fade-in">
-                            <img src="windin_logo.png" className="w-36 h-36 mx-auto mb-6 pulse-soft" alt="Winner Dinner" />
-                            <h1 className="font-display text-4xl text-white mb-2">Winner Dinner</h1>
-                            <p className="text-white/40">Loading...</p>
-                        </div>
-                    </div>
-                );
+        // If already signed in, go straight to app
+        auth.onAuthStateChanged(function(user) {
+            if (user) {
+                window.location.href = 'app.html';
             }
+        });
 
-            // --- SIGN IN ---
-            if (!user) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
-                        <div className="w-full max-w-sm fade-in">
-                            <div className="text-center mb-10">
-                                <img src="windin_logo.png" className="w-52 h-52 mx-auto mb-5" alt="Winner Dinner" />
-                                <h1 className="font-display text-5xl text-white mb-3">Winner Dinner</h1>
-                                <p className="text-white/50 text-lg">Vote together, eat together</p>
-                            </div>
-                            {error && (
-                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">{error}</div>
-                            )}
-                            <button
-                                onClick={signInWithGoogle}
-                                disabled={loading}
-                                className="w-full bg-white text-gray-800 py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
-                            >
-                                <GoogleIcon className="w-5 h-5" />
-                                {loading ? 'Signing in...' : 'Continue with Google'}
-                            </button>
-
-                        </div>
-                    </div>
-                );
-            }
-
-            // --- SESSIONS LIST ---
-            if (screen === 'sessions') {
-                const entries = Object.entries(userSessions).sort((a, b) => (b[1].joinedAt || 0) - (a[1].joinedAt || 0));
-                return (
-                    <div className="min-h-screen p-4 relative z-10">
-                        <div className="max-w-md mx-auto pt-6">
-                            <div className="flex items-center justify-between mb-8 fade-in">
-                                <div className="flex items-center gap-3">
-                                    <img src="windin_logo.png" className="w-10 h-10" alt="Winner Dinner" />
-                                    <div>
-                                        <h1 className="font-display text-3xl text-white">Winner Dinner</h1>
-                                        <p className="text-white/40 text-sm mt-1">Hey, {user.displayName?.split(' ')[0] || 'there'}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    {user.photoURL && <img src={user.photoURL} className="w-9 h-9 rounded-full ring-2 ring-white/10" referrerPolicy="no-referrer" />}
-                                    <button onClick={signOut} className="text-white/30 hover:text-white/60 transition-colors">
-                                        <LogOutIcon className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {error && (
-                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm">{error}</div>
-                            )}
-
-                            {/* Join */}
-                            <div className="bg-white/5 rounded-2xl p-5 mb-4 card-glow fade-in" style={{animationDelay:'0.05s'}}>
-                                <p className="text-white/60 text-sm mb-3">Join with a code</p>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Enter code"
-                                        value={inputCode}
-                                        onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                                        onKeyPress={(e) => e.key === 'Enter' && joinSession()}
-                                        className="flex-1 bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl placeholder-white/20 uppercase tracking-widest text-center font-semibold"
-                                    />
-                                    <button onClick={joinSession} disabled={!inputCode.trim() || loading} className="btn-primary text-white px-6 py-3 rounded-xl font-semibold disabled:opacity-30 disabled:transform-none">
-                                        Join
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Create */}
-                            {showCreate ? (
-                                <div className="bg-white/5 rounded-2xl p-5 mb-6 card-glow fade-in">
-                                    <p className="text-white/60 text-sm mb-3">Name your dinner party</p>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. Friday Night Dinner"
-                                            value={sessionName}
-                                            onChange={(e) => setSessionName(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && createSession()}
-                                            className="flex-1 bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl placeholder-white/20"
-                                            autoFocus
-                                        />
-                                        <button onClick={createSession} disabled={!sessionName.trim() || loading} className="btn-primary text-white px-5 py-3 rounded-xl font-semibold disabled:opacity-30 disabled:transform-none">
-                                            {loading ? '...' : 'Create'}
-                                        </button>
-                                    </div>
-                                    <button onClick={() => { setShowCreate(false); setSessionName(''); }} className="text-white/30 text-sm mt-3 hover:text-white/50">Cancel</button>
-                                </div>
-                            ) : (
-                                <button
-                                    onClick={() => setShowCreate(true)}
-                                    className="w-full border-2 border-dashed border-white/20 rounded-2xl p-5 mb-6 text-white/50 hover:text-white/70 hover:border-white/30 transition-all flex items-center justify-center gap-2 fade-in"
-                                    style={{animationDelay:'0.1s'}}
-                                >
-                                    <PlusIcon className="w-5 h-5" /> Create New Dinner Party
-                                </button>
-                            )}
-
-                            {/* List */}
-                            {entries.length > 0 ? (
-                                <div className="space-y-3">
-                                    {entries.map(([code, info], idx) => {
-                                        const liveData = sessionParticipants[code] || {};
-                                        const displayName = liveData.sessionName || info.name || code;
-                                        const names = liveData.names || [];
-                                        return (
-                                            <button
-                                                key={code}
-                                                onClick={() => openSession(code)}
-                                                className="w-full bg-white/5 rounded-2xl p-5 card-glow text-left transition-all hover:bg-white/8 fade-in"
-                                                style={{animationDelay:`${0.1 + idx * 0.05}s`}}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <h3 className="text-white font-semibold text-lg">{displayName}</h3>
-                                                        {names.length > 0 && (
-                                                            <p className="text-white/30 text-sm mt-1">{names.join(', ')}</p>
-                                                        )}
-                                                    </div>
-                                                    <svg className="w-5 h-5 text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12 fade-in" style={{animationDelay:'0.15s'}}>
-                                    <img src="windin_logo.png" className="w-16 h-16 mx-auto mb-4 opacity-30" alt="Winner Dinner" />
-                                    <p className="text-white/30">No sessions yet</p>
-                                    <p className="text-white/15 text-sm mt-1">Create one or join with a code</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            }
-
-            // --- SWIPE SCREEN ---
-            if (screen === 'swipe') {
-                const cur = restaurants[currentIndex];
-                const hasVoted = cur && userVotes[cur] !== undefined;
-                const allDone = restaurants.length > 0 && restaurants.every(r => userVotes[r] !== undefined);
-                const status = cur ? getVoterStatus(cur) : null;
-
-                return (
-                    <div className="min-h-screen p-4 relative z-10">
-                        <div className="max-w-md mx-auto pt-4">
-                            {/* Header */}
-                            <div className="flex items-center gap-3 mb-6 fade-in">
-                                <button onClick={goBack} className="text-white/40 hover:text-white/70 transition-colors">
-                                    <ArrowLeftIcon className="w-6 h-6" />
-                                </button>
-                                <div className="flex-1">
-                                    {editingName ? (
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={editNameValue}
-                                                onChange={(e) => setEditNameValue(e.target.value)}
-                                                onKeyPress={(e) => e.key === 'Enter' && renameSession()}
-                                                className="bg-white/5 border border-white/10 text-white px-3 py-1.5 rounded-lg text-lg font-semibold w-full"
-                                                autoFocus
-                                            />
-                                            <button onClick={renameSession} className="text-green-400 hover:text-green-300 transition-colors">
-                                                <CheckIcon className="w-5 h-5" />
-                                            </button>
-                                            <button onClick={() => setEditingName(false)} className="text-white/30 hover:text-white/50 transition-colors">
-                                                <XIcon className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2">
-                                            <h2 className="text-white font-semibold text-lg leading-tight">{currentSessionName}</h2>
-                                            <button
-                                                onClick={() => { setEditNameValue(currentSessionName); setEditingName(true); }}
-                                                className="text-white/20 hover:text-white/50 transition-colors"
-                                            >
-                                                <PencilIcon className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    )}
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-white/30 text-sm tracking-wider">{sessionCode}</span>
-                                        <button
-                                            onClick={() => { navigator.clipboard.writeText(sessionCode); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-                                            className="text-white/20 hover:text-white/50 transition-colors"
-                                        >
-                                            {copied ? <CheckIcon className="w-4 h-4 text-green-400" /> : <CopyIcon className="w-4 h-4" />}
-                                        </button>
-                                    </div>
-                                </div>
-                                {user.photoURL && <img src={user.photoURL} className="w-8 h-8 rounded-full ring-2 ring-white/10" referrerPolicy="no-referrer" />}
-                            </div>
-
-                            {/* Participants */}
-                            {participantNames.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mb-5 fade-in" style={{animationDelay:'0.05s'}}>
-                                    {participantNames.map((name, i) => (
-                                        <span key={i} className="bg-white/5 border border-white/10 text-white/60 px-3 py-1 rounded-full text-xs font-medium">{name}</span>
-                                    ))}
-                                </div>
-                            )}
-
-                            {error && (
-                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm fade-in">{error}</div>
-                            )}
-
-                            {/* Matches */}
-                            {matches.length > 0 && (
-                                <div className="match-glow bg-green-500/10 border border-green-500/20 rounded-2xl p-5 mb-5 slide-up">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <SparklesIcon className="w-5 h-5 text-green-400" />
-                                        <h3 className="text-green-400 font-bold text-lg">Everyone Agrees!</h3>
-                                    </div>
-                                    <p className="text-green-400/60 text-sm mb-3">All {participantNames.length} participants liked:</p>
-                                    {matches.map((r, i) => (
-                                        <div key={i} className="bg-green-400/10 rounded-xl px-4 py-3 mb-2 last:mb-0">
-                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 font-semibold hover:underline">{r}</a>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Add Restaurant */}
-                            <div className="mb-5 fade-in" style={{animationDelay:'0.1s'}}>
-                                <div className="bg-white/5 rounded-2xl p-4 card-glow">
-                                    <p className="text-white/60 text-sm mb-3">Add a restaurant</p>
-                                    <div className="flex gap-2 mb-3">
-                                        {[['manual', 'Manual'], ['search', 'Search'], ['nearby', 'Nearby']].map(([mode, label]) => (
-                                            <button
-                                                key={mode}
-                                                onClick={() => {
-                                                    setAddMode(mode);
-                                                    setSearchResults([]);
-                                                    setSelectedResults(new Set());
-                                                    if (mode === 'nearby') { browseNearby(); }
-                                                    else if (mode === 'search' && !userLocation) { requestLocation(); }
-                                                }}
-                                                className={`flex-1 text-xs py-2 rounded-xl font-medium transition-colors ${addMode === mode ? 'bg-white/15 text-white' : 'bg-white/5 text-white/30 hover:text-white/50'}`}
-                                            >
-                                                {label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    {addMode !== 'nearby' && (
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
-                                                placeholder={addMode === 'search' ? "Type, name, or keyword..." : "Restaurant name"}
-                                                value={newRestaurant}
-                                                onChange={(e) => setNewRestaurant(e.target.value)}
-                                                onKeyPress={(e) => e.key === 'Enter' && (addMode === 'search' ? searchRestaurants() : addRestaurant())}
-                                                className="flex-1 min-w-0 bg-white/5 border border-white/10 text-white px-3 py-3 rounded-xl placeholder-white/20"
-                                            />
-                                            {addMode === 'manual' ? (
-                                                <button onClick={() => addRestaurant()} className="bg-white/10 hover:bg-white/15 text-white px-3 py-3 rounded-xl transition-colors flex-shrink-0">
-                                                    <PlusIcon className="w-5 h-5" />
-                                                </button>
-                                            ) : (
-                                                <button onClick={searchRestaurants} className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-3 py-3 rounded-xl transition-colors flex-shrink-0">
-                                                    <SearchIcon className="w-5 h-5" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                    {addMode === 'search' && (
-                                        <div className="mt-2">
-                                            <input
-                                                type="text"
-                                                placeholder="City, state, or zip (optional)"
-                                                value={searchLocation}
-                                                onChange={(e) => setSearchLocation(e.target.value)}
-                                                onKeyPress={(e) => e.key === 'Enter' && searchRestaurants()}
-                                                className="w-full bg-white/5 border border-white/10 text-white px-3 py-2.5 rounded-xl placeholder-white/20 text-sm"
-                                            />
-                                        </div>
-                                    )}
-                                    {/* Search/Browse Results */}
-                                    {addMode !== 'manual' && searchResults.length > 0 && (
-                                        <div className="mt-3">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <button
-                                                    onClick={selectAllResults}
-                                                    className="text-xs text-white/30 hover:text-white/50 transition-colors"
-                                                >
-                                                    {selectedResults.size === searchResults.length ? 'Deselect all' : 'Select all'}
-                                                </button>
-                                                {selectedResults.size > 0 && (
-                                                    <button
-                                                        onClick={addSelectedRestaurants}
-                                                        className="text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 px-3 py-1.5 rounded-lg transition-colors font-medium"
-                                                    >
-                                                        Add {selectedResults.size} restaurant{selectedResults.size !== 1 ? 's' : ''}
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div className="space-y-1.5 max-h-80 overflow-y-auto">
-                                                {searchResults.map((r, i) => {
-                                                    const isSelected = selectedResults.has(r.name);
-                                                    return (
-                                                        <div
-                                                            key={i}
-                                                            className={`w-full text-left rounded-xl px-3 py-2.5 transition-colors flex items-start gap-3 ${isSelected ? 'bg-purple-500/15 border border-purple-500/20' : 'bg-white/5 hover:bg-white/10'}`}
-                                                        >
-                                                            <button onClick={() => toggleResult(r.name)} className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors cursor-pointer ${isSelected ? 'bg-purple-500 border-purple-500' : 'border-white/20 hover:border-white/40'}`}>
-                                                                {isSelected && (
-                                                                    <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                                                        <polyline points="20 6 9 17 4 12"/>
-                                                                    </svg>
-                                                                )}
-                                                            </button>
-                                                            <div className="min-w-0 flex-1">
-                                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.name + (r.address ? ' ' + r.address : ''))}`} target="_blank" rel="noopener noreferrer" className="text-white/80 text-sm font-medium truncate block hover:underline">{r.name}</a>
-                                                                {r.address && <p className="text-white/30 text-xs truncate">{r.address}</p>}
-                                                                <div className="flex items-center gap-2 mt-0.5">
-                                                                    {r.category && <span className="text-white/20 text-xs">{r.category}</span>}
-                                                                    {r.distance != null && <span className="text-white/20 text-xs">· {r.distance.toFixed(1)} mi</span>}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {addMode !== 'manual' && searchLoading && (
-                                        <p className="text-white/20 text-xs mt-3 text-center pulse-soft">Searching...</p>
-                                    )}
-                                    {addMode === 'search' && newRestaurant.length >= 2 && !searchLoading && searchResults.length === 0 && (
-                                        <p className="text-white/20 text-xs mt-3 text-center">No results found</p>
-                                    )}
-                                </div>
-                            </div>
-                            {/* Voting */}
-                            {restaurants.length === 0 ? (
-                                <div className="text-center py-16 fade-in" style={{animationDelay:'0.15s'}}>
-                                    <p className="text-white/30 text-lg">Add some restaurants to get started</p>
-                                </div>
-                            ) : allDone ? (
-                                <div className="bg-white/5 rounded-2xl p-10 text-center card-glow slide-up">
-                                    <CheckIcon className="w-12 h-12 text-white/20 mx-auto mb-4" />
-                                    <h3 className="text-white text-xl font-bold mb-2">All done!</h3>
-                                    <p className="text-white/40 mb-6">You've voted on all {restaurants.length} restaurants.</p>
-                                    <button onClick={resetVotes} className="btn-primary text-white px-8 py-3 rounded-xl font-semibold">Vote Again</button>
-                                </div>
-                            ) : (
-                                <div
-                                    ref={!hasVoted ? cardRef : undefined}
-                                    className="bg-white/5 rounded-2xl overflow-hidden card-glow slide-up"
-                                    style={!hasVoted ? {
-                                        transform: `translateX(${swipeX}px) rotate(${swipeX * 0.05}deg)`,
-                                        transition: swiping ? 'none' : 'transform 0.3s ease',
-                                        touchAction: 'none',
-                                    } : {}}
-                                >
-                                    <div className="restaurant-card-bg p-10 text-center" style={!hasVoted && swipeX !== 0 ? {
-                                        background: swipeX > 0
-                                            ? `linear-gradient(225deg, rgba(22,163,74,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
-                                            : `linear-gradient(135deg, rgba(220,38,38,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
-                                    } : {}}>
-                                        <p className="text-white/30 text-sm mb-3 tracking-wider uppercase">{currentIndex + 1} / {restaurants.length}</p>
-                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer" className="font-display text-4xl text-white mb-4 block hover:underline">{cur}</a>
-                                        {hasVoted && status && status.total > 1 && (
-                                            <div className="bg-white/10 rounded-xl px-4 py-2 inline-block">
-                                                <p className="text-sm text-white/60">
-                                                    {status.liked > 0 && `❤️ ${status.liked}`}
-                                                    {status.liked > 0 && status.disliked > 0 && '  ·  '}
-                                                    {status.disliked > 0 && `✕ ${status.disliked}`}
-                                                    {status.pending > 0 && `  ·  ⏳ ${status.pending}`}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                    {hasVoted ? (
-                                        <div className="p-6 text-center">
-                                            <p className="text-white/40 mb-4">You voted: {userVotes[cur] ? '❤️ Yes' : '✕ No'}</p>
-                                            <button
-                                                onClick={() => setCurrentIndex(Math.min(currentIndex + 1, restaurants.length - 1))}
-                                                className="bg-white/10 hover:bg-white/15 text-white px-8 py-3 rounded-xl font-semibold transition-colors"
-                                            >
-                                                Next
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="p-6">
-                                            <div className="flex gap-3">
-                                                <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                    <XIcon className="w-7 h-7" /> Pass
-                                                </button>
-                                                <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                    <HeartIcon className="w-7 h-7" /> Like
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Remove Restaurants */}
-                            {restaurants.length > 0 && (
-                                <div className="mt-5 fade-in">
-                                    <button
-                                        onClick={() => setShowRestaurantList(!showRestaurantList)}
-                                        className={`w-full bg-white/5 rounded-2xl px-4 py-3 card-glow flex items-center justify-center gap-2 transition-colors ${showRestaurantList ? 'bg-red-500/10 border border-red-500/20' : 'hover:bg-white/8'}`}
-                                    >
-                                        <TrashIcon className={`w-4 h-4 ${showRestaurantList ? 'text-red-400' : 'text-white/30'}`} />
-                                        <span className={`text-sm font-medium ${showRestaurantList ? 'text-red-400' : 'text-white/30'}`}>Remove Restaurants ({restaurants.length})</span>
-                                    </button>
-                                    {showRestaurantList && (
-                                        <div className="bg-white/5 rounded-2xl p-5 mt-3 card-glow fade-in">
-                                            <div className="space-y-2">
-                                                {restaurants.map((r, i) => (
-                                                    <div key={i} className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-2.5">
-                                                        <span className="text-white/70 text-sm">{r}</span>
-                                                        <button
-                                                            onClick={() => deleteRestaurant(r)}
-                                                            className="text-white/20 hover:text-red-400 transition-colors"
-                                                            title="Remove restaurant"
-                                                        >
-                                                            <TrashIcon className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
+        async function signIn() {
+            var btn = document.getElementById('signInBtn');
+            var errorBox = document.getElementById('error');
+            btn.disabled = true;
+            btn.textContent = 'Signing in...';
+            errorBox.style.display = 'none';
+            try {
+                await auth.signInWithPopup(googleProvider);
+                window.location.href = 'app.html';
+            } catch (err) {
+                if (err.code !== 'auth/popup-closed-by-user') {
+                    errorBox.textContent = 'Sign in failed. Please try again.';
+                    errorBox.style.display = 'block';
+                }
+                btn.disabled = false;
+                btn.innerHTML = '<svg class="google-icon" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google';
             }
         }
-
-        ReactDOM.render(<WinnerDinner />, document.getElementById('root'));
     </script>
 </body>
 </html>
