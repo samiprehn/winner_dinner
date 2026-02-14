@@ -229,6 +229,7 @@
             const [showRestaurantList, setShowRestaurantList] = useState(false);
             const [sessionParticipants, setSessionParticipants] = useState({});
             const [searchResults, setSearchResults] = useState([]);
+            const [narrowedList, setNarrowedList] = useState(null);
             const [searchLoading, setSearchLoading] = useState(false);
             const [userLocation, setUserLocation] = useState(null);
             const [addMode, setAddMode] = useState('manual');
@@ -326,6 +327,7 @@
                     const data = snap.val();
                     if (data) {
                         setRestaurants(data.restaurants || []);
+                        setNarrowedList(data.narrowed || null);
                         setCurrentSessionName(data.name || sessionCode);
                         const votes = data.votes || {};
                         const parts = data.participants || {};
@@ -680,7 +682,8 @@
             };
 
             const vote = async (liked) => {
-                const unvoted = restaurants.filter(r => userVotes[r] === undefined);
+                const activeList = narrowedList || restaurants;
+                const unvoted = activeList.filter(r => userVotes[r] === undefined);
                 const restaurant = unvoted[0];
                 if (!restaurant) return;
                 const next = { ...userVotes, [restaurant]: liked };
@@ -697,7 +700,19 @@
                 setCurrentIndex(0);
                 try {
                     await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).set({});
+                    await database.ref(`sessions/${sessionCode}/narrowed`).remove();
                 } catch (err) {
+                    console.error(err);
+                }
+            };
+
+            const narrowDown = async () => {
+                try {
+                    await database.ref(`sessions/${sessionCode}/narrowed`).set(matches);
+                    await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).set({});
+                    setUserVotes({});
+                } catch (err) {
+                    setError('Failed to narrow down.');
                     console.error(err);
                 }
             };
@@ -882,10 +897,11 @@
 
             // --- SWIPE SCREEN ---
             if (screen === 'swipe') {
-                const unvoted = restaurants.filter(r => userVotes[r] === undefined);
+                const activeList = narrowedList || restaurants;
+                const unvoted = activeList.filter(r => userVotes[r] === undefined);
                 const cur = unvoted[0] || null;
-                const allDone = restaurants.length > 0 && unvoted.length === 0;
-                const votedCount = restaurants.length - unvoted.length;
+                const allDone = activeList.length > 0 && unvoted.length === 0;
+                const votedCount = activeList.length - unvoted.length;
                 const status = cur ? getVoterStatus(cur) : null;
 
                 return (
@@ -941,7 +957,7 @@
                             {participantNames.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mb-5 fade-in" style={{animationDelay:'0.05s'}}>
                                     {Object.entries(participants).map(([uid, name]) => {
-                                        const doneVoting = restaurants.length > 0 && restaurants.every(r => allVotes[uid]?.[r] !== undefined);
+                                        const doneVoting = activeList.length > 0 && activeList.every(r => allVotes[uid]?.[r] !== undefined);
                                         return (
                                             <span key={uid} className={`px-3 py-1 rounded-full text-xs font-medium border ${doneVoting ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>{name}</span>
                                         );
@@ -1088,8 +1104,13 @@
                                 <div className="bg-white/5 rounded-2xl p-10 text-center card-glow slide-up">
                                     <CheckIcon className="w-12 h-12 text-white/20 mx-auto mb-4" />
                                     <h3 className="text-white text-xl font-bold mb-2">All done!</h3>
-                                    <p className="text-white/40 mb-6">You've voted on all {restaurants.length} restaurants.</p>
-                                    <button onClick={resetVotes} className="btn-primary text-white px-8 py-3 rounded-xl font-semibold">Vote Again</button>
+                                    <p className="text-white/40 mb-6">You've voted on all {activeList.length} restaurants.</p>
+                                    <div className="flex flex-col gap-3">
+                                        {matches.length > 1 && (
+                                            <button onClick={narrowDown} className="btn-like text-white px-8 py-3 rounded-xl font-semibold">Narrow It Down</button>
+                                        )}
+                                        <button onClick={resetVotes} className="btn-primary text-white px-8 py-3 rounded-xl font-semibold">Start Over</button>
+                                    </div>
                                 </div>
                             ) : (
                                 <div
@@ -1106,7 +1127,7 @@
                                             ? `linear-gradient(225deg, rgba(22,163,74,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
                                             : `linear-gradient(135deg, rgba(220,38,38,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
                                     } : {}}>
-                                        <p className="text-white/30 text-sm mb-3 tracking-wider uppercase">{votedCount + 1} / {restaurants.length}</p>
+                                        <p className="text-white/30 text-sm mb-3 tracking-wider uppercase">{votedCount + 1} / {activeList.length}</p>
                                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer" className="font-display text-4xl text-white mb-4 block hover:underline">{cur}</a>
                                     </div>
                                     <div className="p-6">
