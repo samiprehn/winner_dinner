@@ -6,12 +6,14 @@ A group restaurant picker app that helps you and your friends (or partner) agree
 
 - 🔄 **Real-time syncing** between devices using Firebase
 - 📱 **Mobile-friendly** design - works great on phones in a browser
+- 👆 **Swipe to vote** - swipe right to like, left to pass (or use buttons)
 - 👥 **Unlimited users** - works for couples or groups of friends
 - 💑 **Independent voting** - each person votes without seeing others' choices
 - 📊 **Vote tracking** - see how many people have voted on each restaurant
 - ✨ **Instant matches** - see which restaurants everyone agrees on
 - 🔒 **Session-based** - share a code one time to connect with your group
 - 💾 **Persistent storage** - your groups, restaurant lists and votes are saved
+- 🗺️ **Google Maps links** - tap any restaurant name to view it on Google Maps
 
 ## How to Use
 
@@ -27,17 +29,17 @@ A group restaurant picker app that helps you and your friends (or partner) agree
    - Click "Join"
 
 3. **Add restaurants:**
-   - Anyone in the group can add restaurants to the list in three ways
-   - Type the name and click the + button
-   - Click "browse nearby" to get the 20 closest restaurants to your current location
-   - Click "search" and enter a restaurant name, cuisine type, or keyword (ex: wings)
-   - Enter a zip code or city and state in the second box (optional - leave blank for nearby)
-   - Click the check boxes next to each restaurant you would like to add
+   - Anyone in the group can add restaurants using three modes:
+   - **Manual**: Type the name and click the + button
+   - **Nearby**: Browse the 20 closest restaurants to your current location
+   - **Search**: Enter a restaurant name, cuisine type, or keyword (ex: wings), optionally with a zip code or city/state
+   - Check the boxes next to each restaurant you would like to add
    - Click "add n restaurants" where n is the number of boxes you checked
 
 4. **Vote independently:**
    - Each person votes on the restaurants
-   - Click ❤️ (Like) or ✕ (Pass) for each one
+   - Swipe right to like, left to pass (or use the buttons)
+   - Tap a restaurant name to view it on Google Maps
    - Nobody can see your votes until everyone's done!
 
 5. **See your matches:**
@@ -66,10 +68,15 @@ Visit: `https://samiprehn.github.io/winner_dinner`
 ## Technology Stack
 
 - **React** - UI framework
-- **Firebase Realtime Database** - Real-time data syncing
-- **Cloudflare worker** - Server interacting with google maps API
+- **Firebase Auth & Realtime Database** - Authentication and real-time data syncing
+- **Cloudflare Worker** - Server interacting with Google Places API
 - **Tailwind CSS** - Styling
 - **GitHub Pages** - Hosting
+
+## Project Structure
+
+- `index.html` - Landing page with Google sign-in
+- `app.html` - Main application (sessions, voting, restaurant search)
 
 ## Setup
 
@@ -79,17 +86,14 @@ If you want to run it locally or modify it:
 
 1. Clone this repository
 2. Open `index.html` in any modern web browser
-3. That's it! No build process needed.
-
-## Firebase Configuration
-
-The app uses Firebase Realtime Database for syncing votes between devices. The Firebase configuration is already set up and included in the HTML file.
+3. Sign in with Google to access the app
+4. That's it! No build process needed.
 
 ## Privacy
 
 - Session data is stored in Firebase with a random session code
 - Only people with your session code can see your restaurant list
-- No personal information is collected
+- Google sign-in is used for authentication (name and profile photo are visible to session members)
 - Sessions persist so you can reuse them with the same group
 
 ## Tips
