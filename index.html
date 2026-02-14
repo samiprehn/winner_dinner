@@ -88,7 +88,6 @@
     </style>
 </head>
 <body>
-    <p style="display:none;">Impact-Site-Verification: 6165e86a-9da3-43a1-bd1e-837ae43cc438</p>
     <div class="bg-grain"></div>
     <div id="root"></div>
     
@@ -705,7 +704,7 @@
                     <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
                         <div className="w-full max-w-sm fade-in">
                             <div className="text-center mb-10">
-                                <img src="windin_logo.png" className="w-24 h-24 mx-auto mb-5" alt="Winner Dinner" />
+                                <img src="windin_logo.png" className="w-40 h-40 mx-auto mb-5" alt="Winner Dinner" />
                                 <h1 className="font-display text-5xl text-white mb-3">Winner Dinner</h1>
                                 <p className="text-white/50 text-lg">Vote together, eat together</p>
                             </div>
@@ -733,9 +732,12 @@
                     <div className="min-h-screen p-4 relative z-10">
                         <div className="max-w-md mx-auto pt-6">
                             <div className="flex items-center justify-between mb-8 fade-in">
-                                <div>
-                                    <h1 className="font-display text-3xl text-white">Winner Dinner</h1>
-                                    <p className="text-white/40 text-sm mt-1">Hey, {user.displayName?.split(' ')[0] || 'there'}</p>
+                                <div className="flex items-center gap-3">
+                                    <img src="windin_logo.png" className="w-10 h-10" alt="Winner Dinner" />
+                                    <div>
+                                        <h1 className="font-display text-3xl text-white">Winner Dinner</h1>
+                                        <p className="text-white/40 text-sm mt-1">Hey, {user.displayName?.split(' ')[0] || 'there'}</p>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {user.photoURL && <img src={user.photoURL} className="w-9 h-9 rounded-full ring-2 ring-white/10" referrerPolicy="no-referrer" />}
