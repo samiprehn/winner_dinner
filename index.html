@@ -162,10 +162,13 @@
         const auth = firebase.auth();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
+        const joinParam = new URLSearchParams(window.location.search).get('join');
+        const appUrl = joinParam ? 'app.html?join=' + encodeURIComponent(joinParam) : 'app.html';
+
         // If already signed in, go straight to app
         auth.onAuthStateChanged(function(user) {
             if (user) {
-                window.location.href = 'app.html';
+                window.location.href = appUrl;
             }
         });
 
@@ -177,7 +180,7 @@
             errorBox.style.display = 'none';
             try {
                 await auth.signInWithPopup(googleProvider);
-                window.location.href = 'app.html';
+                window.location.href = appUrl;
             } catch (err) {
                 if (err.code !== 'auth/popup-closed-by-user') {
                     errorBox.textContent = 'Sign in failed. Please try again.';
