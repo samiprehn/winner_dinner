@@ -680,12 +680,13 @@
             };
 
             const vote = async (liked) => {
-                const restaurant = restaurants[currentIndex];
+                const unvoted = restaurants.filter(r => userVotes[r] === undefined);
+                const restaurant = unvoted[0];
+                if (!restaurant) return;
                 const next = { ...userVotes, [restaurant]: liked };
                 setUserVotes(next);
                 try {
                     await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).set(next);
-                    if (currentIndex < restaurants.length - 1) setCurrentIndex(currentIndex + 1);
                 } catch (err) {
                     setError('Failed to save vote.');
                 }
@@ -881,9 +882,10 @@
 
             // --- SWIPE SCREEN ---
             if (screen === 'swipe') {
-                const cur = restaurants[currentIndex];
-                const hasVoted = cur && userVotes[cur] !== undefined;
-                const allDone = restaurants.length > 0 && restaurants.every(r => userVotes[r] !== undefined);
+                const unvoted = restaurants.filter(r => userVotes[r] === undefined);
+                const cur = unvoted[0] || null;
+                const allDone = restaurants.length > 0 && unvoted.length === 0;
+                const votedCount = restaurants.length - unvoted.length;
                 const status = cur ? getVoterStatus(cur) : null;
 
                 return (
@@ -1091,54 +1093,32 @@
                                 </div>
                             ) : (
                                 <div
-                                    ref={!hasVoted ? cardRef : undefined}
+                                    ref={cardRef}
                                     className="bg-white/5 rounded-2xl overflow-hidden card-glow slide-up"
-                                    style={!hasVoted ? {
+                                    style={{
                                         transform: `translateX(${swipeX}px) rotate(${swipeX * 0.05}deg)`,
                                         transition: swiping ? 'none' : 'transform 0.3s ease',
                                         touchAction: 'none',
-                                    } : {}}
+                                    }}
                                 >
-                                    <div className="restaurant-card-bg p-10 text-center" style={!hasVoted && swipeX !== 0 ? {
+                                    <div className="restaurant-card-bg p-10 text-center" style={swipeX !== 0 ? {
                                         background: swipeX > 0
                                             ? `linear-gradient(225deg, rgba(22,163,74,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
                                             : `linear-gradient(135deg, rgba(220,38,38,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
                                     } : {}}>
-                                        <p className="text-white/30 text-sm mb-3 tracking-wider uppercase">{currentIndex + 1} / {restaurants.length}</p>
+                                        <p className="text-white/30 text-sm mb-3 tracking-wider uppercase">{votedCount + 1} / {restaurants.length}</p>
                                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer" className="font-display text-4xl text-white mb-4 block hover:underline">{cur}</a>
-                                        {hasVoted && status && status.total > 1 && (
-                                            <div className="bg-white/10 rounded-xl px-4 py-2 inline-block">
-                                                <p className="text-sm text-white/60">
-                                                    {status.liked > 0 && `❤️ ${status.liked}`}
-                                                    {status.liked > 0 && status.disliked > 0 && '  ·  '}
-                                                    {status.disliked > 0 && `✕ ${status.disliked}`}
-                                                    {status.pending > 0 && `  ·  ⏳ ${status.pending}`}
-                                                </p>
-                                            </div>
-                                        )}
                                     </div>
-                                    {hasVoted ? (
-                                        <div className="p-6 text-center">
-                                            <p className="text-white/40 mb-4">You voted: {userVotes[cur] ? '❤️ Yes' : '✕ No'}</p>
-                                            <button
-                                                onClick={() => setCurrentIndex(Math.min(currentIndex + 1, restaurants.length - 1))}
-                                                className="bg-white/10 hover:bg-white/15 text-white px-8 py-3 rounded-xl font-semibold transition-colors"
-                                            >
-                                                Next
+                                    <div className="p-6">
+                                        <div className="flex gap-3">
+                                            <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
+                                                <XIcon className="w-7 h-7" /> Pass
+                                            </button>
+                                            <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
+                                                <HeartIcon className="w-7 h-7" /> Like
                                             </button>
                                         </div>
-                                    ) : (
-                                        <div className="p-6">
-                                            <div className="flex gap-3">
-                                                <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                    <XIcon className="w-7 h-7" /> Pass
-                                                </button>
-                                                <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                    <HeartIcon className="w-7 h-7" /> Like
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
                             )}
 
