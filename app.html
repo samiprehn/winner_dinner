@@ -938,9 +938,12 @@
                             {/* Participants */}
                             {participantNames.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mb-5 fade-in" style={{animationDelay:'0.05s'}}>
-                                    {participantNames.map((name, i) => (
-                                        <span key={i} className="bg-white/5 border border-white/10 text-white/60 px-3 py-1 rounded-full text-xs font-medium">{name}</span>
-                                    ))}
+                                    {Object.entries(participants).map(([uid, name]) => {
+                                        const doneVoting = restaurants.length > 0 && restaurants.every(r => allVotes[uid]?.[r] !== undefined);
+                                        return (
+                                            <span key={uid} className={`px-3 py-1 rounded-full text-xs font-medium border ${doneVoting ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>{name}</span>
+                                        );
+                                    })}
                                 </div>
                             )}
 
