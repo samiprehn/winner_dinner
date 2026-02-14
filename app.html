@@ -239,6 +239,11 @@
             const touchStartRef = React.useRef(null);
             const swipeXRef = React.useRef(0);
             const cardRef = React.useRef(null);
+            const [dragState, setDragState] = useState(null);
+            const longPressTimer = React.useRef(null);
+            const dragStartY = React.useRef(0);
+            const dragCardRects = React.useRef([]);
+            const listContainerRef = React.useRef(null);
 
             // Auth listener
             useEffect(() => {
@@ -430,6 +435,68 @@
                     setError('Failed to leave session.');
                     console.error(err);
                 }
+            };
+
+            // Drag-to-reorder session cards
+            const handleDragStart = (code, idx, clientY) => {
+                longPressTimer.current = setTimeout(() => {
+                    dragStartY.current = clientY;
+                    // Capture card positions
+                    if (listContainerRef.current) {
+                        const cards = listContainerRef.current.querySelectorAll('[data-session-card]');
+                        dragCardRects.current = Array.from(cards).map(c => {
+                            const r = c.getBoundingClientRect();
+                            return { top: r.top, bottom: r.bottom, mid: r.top + r.height / 2 };
+                        });
+                    }
+                    setDragState({ code, fromIndex: idx, toIndex: idx, offsetY: 0 });
+                    if (navigator.vibrate) navigator.vibrate(30);
+                }, 500);
+            };
+
+            const handleDragMove = (clientY) => {
+                if (!dragState) return;
+                const offsetY = clientY - dragStartY.current;
+                // Figure out which slot we're over
+                const currentMid = dragCardRects.current[dragState.fromIndex]?.mid + offsetY;
+                let toIndex = dragState.fromIndex;
+                for (let i = 0; i < dragCardRects.current.length; i++) {
+                    if (currentMid < dragCardRects.current[i].mid) {
+                        toIndex = i;
+                        break;
+                    }
+                    toIndex = i;
+                }
+                setDragState(prev => ({ ...prev, offsetY, toIndex }));
+            };
+
+            const handleDragEnd = async () => {
+                clearTimeout(longPressTimer.current);
+                if (!dragState || dragState.fromIndex === dragState.toIndex) {
+                    setDragState(null);
+                    return;
+                }
+                // Reorder entries and save new sortOrder values
+                const entries = Object.entries(userSessions).sort((a, b) => (a[1].sortOrder ?? Infinity) - (b[1].sortOrder ?? Infinity) || (b[1].joinedAt || 0) - (a[1].joinedAt || 0));
+                const codes = entries.map(e => e[0]);
+                const moved = codes.splice(dragState.fromIndex, 1)[0];
+                codes.splice(dragState.toIndex, 0, moved);
+                const updates = {};
+                codes.forEach((c, i) => {
+                    updates[`users/${user.uid}/sessions/${c}/sortOrder`] = i;
+                });
+                setDragState(null);
+                try {
+                    await database.ref().update(updates);
+                } catch (err) {
+                    setError('Failed to reorder.');
+                }
+            };
+
+            const cancelDrag = () => {
+                clearTimeout(longPressTimer.current);
+                if (!dragState) return;
+                setDragState(null);
             };
 
             const openSession = (code) => {
@@ -717,6 +784,20 @@
                 }
             };
 
+            // Non-passive touch listener for drag reorder (prevents scroll during drag)
+            useEffect(() => {
+                const el = listContainerRef.current;
+                if (!el) return;
+                const onTouchMove = (e) => {
+                    if (dragState) {
+                        e.preventDefault();
+                        handleDragMove(e.touches[0].clientY);
+                    }
+                };
+                el.addEventListener('touchmove', onTouchMove, { passive: false });
+                return () => el.removeEventListener('touchmove', onTouchMove);
+            }, [dragState]);
+
             const handleTouchStart = React.useCallback((e) => {
                 touchStartRef.current = e.touches[0].clientX;
                 swipeXRef.current = 0;
@@ -788,7 +869,7 @@
 
             // --- SESSIONS LIST ---
             if (screen === 'sessions') {
-                const entries = Object.entries(userSessions).sort((a, b) => (b[1].joinedAt || 0) - (a[1].joinedAt || 0));
+                const entries = Object.entries(userSessions).sort((a, b) => (a[1].sortOrder ?? Infinity) - (b[1].sortOrder ?? Infinity) || (b[1].joinedAt || 0) - (a[1].joinedAt || 0));
                 return (
                     <div className="min-h-screen p-4 relative z-10">
                         <div className="max-w-md mx-auto pt-6">
@@ -844,19 +925,47 @@
 
                             {/* List */}
                             {entries.length > 0 ? (
-                                <div className="space-y-3">
+                                <div className="space-y-3" ref={listContainerRef}
+                                    onMouseMove={dragState ? (e) => handleDragMove(e.clientY) : undefined}
+                                    onMouseUp={dragState ? handleDragEnd : undefined}
+                                    onMouseLeave={dragState ? cancelDrag : undefined}
+                                    onTouchEnd={dragState ? handleDragEnd : undefined}
+                                    onTouchCancel={dragState ? cancelDrag : undefined}
+                                    style={dragState ? { touchAction: 'none', userSelect: 'none' } : undefined}
+                                >
                                     {entries.map(([code, info], idx) => {
                                         const liveData = sessionParticipants[code] || {};
                                         const displayName = liveData.sessionName || info.name || code;
                                         const names = liveData.names || [];
+                                        const isDragging = dragState?.code === code;
+                                        let translateY = 0;
+                                        if (dragState) {
+                                            if (isDragging) {
+                                                translateY = dragState.offsetY;
+                                            } else if (dragState.fromIndex < dragState.toIndex && idx > dragState.fromIndex && idx <= dragState.toIndex) {
+                                                translateY = -72;
+                                            } else if (dragState.fromIndex > dragState.toIndex && idx < dragState.fromIndex && idx >= dragState.toIndex) {
+                                                translateY = 72;
+                                            }
+                                        }
                                         return (
                                             <div
                                                 key={code}
-                                                className="w-full bg-white/5 rounded-2xl p-5 card-glow text-left transition-all hover:bg-white/8 fade-in"
-                                                style={{animationDelay:`${0.1 + idx * 0.05}s`}}
+                                                data-session-card
+                                                className={`w-full bg-white/5 rounded-2xl p-5 card-glow text-left fade-in ${isDragging ? 'z-50 shadow-2xl scale-105 bg-white/10' : 'transition-transform'}`}
+                                                style={{
+                                                    animationDelay: `${0.1 + idx * 0.05}s`,
+                                                    transform: `translateY(${translateY}px)`,
+                                                    position: 'relative',
+                                                    zIndex: isDragging ? 50 : 1,
+                                                }}
+                                                onMouseDown={(e) => { if (e.button === 0 && !confirmLeave) handleDragStart(code, idx, e.clientY); }}
+                                                onMouseUp={() => clearTimeout(longPressTimer.current)}
+                                                onTouchStart={(e) => { if (!confirmLeave) handleDragStart(code, idx, e.touches[0].clientY); }}
+                                                onTouchEnd={() => clearTimeout(longPressTimer.current)}
                                             >
                                                 <div className="flex items-center justify-between">
-                                                    <div className="flex-1 cursor-pointer" onClick={() => openSession(code)}>
+                                                    <div className="flex-1 cursor-pointer" onClick={() => { if (!dragState) openSession(code); }}>
                                                         <h3 className="text-white font-semibold text-lg">{displayName}</h3>
                                                         {names.length > 0 && (
                                                             <p className="text-white/30 text-sm mt-1">{names.join(', ')}</p>
