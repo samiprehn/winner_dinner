@@ -705,14 +705,15 @@
             };
 
             const cuisineTypes = [
-                'Italian', 'Mexican', 'Chinese', 'Japanese', 'Thai', 'Indian',
-                'American', 'Mediterranean', 'Korean', 'Vietnamese', 'Greek',
-                'French', 'Pizza', 'Sushi', 'Burgers', 'BBQ', 'Breakfast',
-                'Ice Cream', 'Dessert'
+                'American', 'BBQ', 'Breakfast', 'Burgers', 'Chinese', 'Dessert',
+                'French', 'Greek', 'Ice Cream', 'Indian', 'Italian', 'Japanese',
+                'Korean', 'Med', 'Mexican', 'Pizza', 'Sushi', 'Thai', 'Vietnamese'
             ];
 
             const browseByCuisine = async (cuisine) => {
                 setSelectedCuisine(cuisine);
+                // Scroll to top when switching cuisines
+                window.scrollTo({ top: 0, behavior: 'smooth' });
                 if (!userLocation) {
                     if (navigator.geolocation) {
                         navigator.geolocation.getCurrentPosition(
@@ -740,7 +741,7 @@
                     const [lat, lng] = ll.split(',');
                     const params = new URLSearchParams({
                         mode: 'search',
-                        query: cuisine,
+                        query: `${cuisine} restaurant`,
                         lat,
                         lng,
                         limit: '20',
@@ -1155,7 +1156,7 @@
                                 <div className="bg-white/5 rounded-2xl p-4 card-glow">
                                     <p className="text-white/60 text-sm mb-3">Add a restaurant</p>
                                     <div className="flex gap-2 mb-3">
-                                        {[['manual', 'Manual'], ['search', 'Search'], ['nearby', 'Nearby'], ['cuisine', 'Cuisine']].map(([mode, label]) => (
+                                        {[['manual', 'Manual'], ['nearby', 'Nearby'], ['cuisine', 'Cuisine'], ['search', 'Search']].map(([mode, label]) => (
                                             <button
                                                 key={mode}
                                                 onClick={() => {
