@@ -1298,6 +1298,20 @@
                                     <CheckIcon className="w-12 h-12 text-white/20 mx-auto mb-4" />
                                     <h3 className="text-white text-xl font-bold mb-2">All done!</h3>
                                     <p className="text-white/40 mb-6">You've voted on all {activeList.length} restaurants.</p>
+                                    {matches.length === 0 && (() => {
+                                        const total = Object.keys(participants).length;
+                                        const best = activeList.reduce((top, r) => {
+                                            const yes = Object.values(allVotes).filter(v => v[toVoteKey(r)] === true).length;
+                                            return yes > top.yes ? { name: r, yes } : top;
+                                        }, { name: null, yes: 0 });
+                                        return best.name ? (
+                                            <div className="mb-6 bg-white/5 rounded-xl p-4">
+                                                <p className="text-white/40 text-sm mb-2">No full match — best partial match:</p>
+                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(best.name)}`} target="_blank" rel="noopener noreferrer" className="font-display text-xl text-white font-bold block hover:underline mb-1">{best.name}</a>
+                                                <p className="text-white/40 text-sm">{best.yes}/{total} yes votes</p>
+                                            </div>
+                                        ) : null;
+                                    })()}
                                     <div className="flex flex-col gap-3">
                                         {matches.length > 1 && (
                                             <button onClick={narrowDown} className="btn-like text-white px-8 py-3 rounded-xl font-semibold">Narrow It Down</button>
