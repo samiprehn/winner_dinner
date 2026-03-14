@@ -810,11 +810,11 @@
                 const unvoted = activeList.filter(r => userVotes[r] === undefined);
                 const restaurant = unvoted[0];
                 if (!restaurant) return;
-                const next = { ...userVotes, [restaurant]: liked };
-                setUserVotes(next);
+                setUserVotes(prev => ({ ...prev, [restaurant]: liked }));
                 try {
-                    await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).set(next);
+                    await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).update({ [restaurant]: liked });
                 } catch (err) {
+                    console.error('Vote save error:', err);
                     setError('Failed to save vote.');
                 }
             };
