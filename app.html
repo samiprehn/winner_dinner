@@ -1313,15 +1313,15 @@
                                         touchAction: 'none',
                                     }}
                                 >
-                                    <div className="restaurant-card-bg p-10 text-center" style={swipeX !== 0 ? {
+                                    <div className="restaurant-card-bg p-5 text-center" style={swipeX !== 0 ? {
                                         background: swipeX > 0
                                             ? `linear-gradient(225deg, rgba(22,163,74,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
                                             : `linear-gradient(135deg, rgba(220,38,38,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
                                     } : {}}>
-                                        <p className="text-white/30 text-sm mb-3 tracking-wider uppercase">{votedCount + 1} / {activeList.length}</p>
-                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer" className="font-display text-4xl text-white mb-4 block hover:underline">{cur}</a>
+                                        <p className="text-white/30 text-sm mb-2 tracking-wider uppercase">{votedCount + 1} / {activeList.length}</p>
+                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer" className="font-display text-4xl text-white mb-2 block hover:underline">{cur}</a>
                                     </div>
-                                    <div className="p-6">
+                                    <div className="p-4">
                                         <div className="flex gap-3">
                                             <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
                                                 <XIcon className="w-7 h-7" /> Pass
