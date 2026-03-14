@@ -527,10 +527,12 @@
                 setError('');
             };
 
+            const toVoteKey = s => s.replace(/\./g, '%2E').replace(/#/g, '%23').replace(/\$/g, '%24').replace(/\[/g, '%5B').replace(/\]/g, '%5D').replace(/\//g, '%2F');
+
             const calculateMatches = (restaurantList, votes, parts) => {
                 const uids = Object.keys(parts);
                 if (uids.length < 2) { setMatches([]); return; }
-                setMatches(restaurantList.filter(r => uids.every(u => votes[u]?.[r] === true)));
+                setMatches(restaurantList.filter(r => uids.every(u => votes[u]?.[toVoteKey(r)] === true)));
             };
 
             const addRestaurant = async (nameOverride) => {
@@ -773,8 +775,8 @@
                     const votes = data.votes || {};
                     const updates = {};
                     Object.keys(votes).forEach(voterUid => {
-                        if (votes[voterUid] && votes[voterUid][restaurantName] !== undefined) {
-                            updates[`votes/${voterUid}/${restaurantName}`] = null;
+                        if (votes[voterUid] && votes[voterUid][toVoteKey(restaurantName)] !== undefined) {
+                            updates[`votes/${voterUid}/${toVoteKey(restaurantName)}`] = null;
                         }
                     });
                     if (Object.keys(updates).length > 0) {
@@ -807,12 +809,12 @@
 
             const vote = async (liked) => {
                 const activeList = narrowedList || restaurants;
-                const unvoted = activeList.filter(r => userVotes[r] === undefined);
+                const unvoted = activeList.filter(r => userVotes[toVoteKey(r)] === undefined);
                 const restaurant = unvoted[0];
                 if (!restaurant) return;
-                setUserVotes(prev => ({ ...prev, [restaurant]: liked }));
+                setUserVotes(prev => ({ ...prev, [toVoteKey(restaurant)]: liked }));
                 try {
-                    await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).update({ [restaurant]: liked });
+                    await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).update({ [toVoteKey(restaurant)]: liked });
                 } catch (err) {
                     console.error('Vote save error:', err);
                     setError('Failed to save vote.');
@@ -895,9 +897,9 @@
             const getVoterStatus = (restaurant) => {
                 const uids = Object.keys(allVotes);
                 return {
-                    liked: uids.filter(u => allVotes[u][restaurant] === true).length,
-                    disliked: uids.filter(u => allVotes[u][restaurant] === false).length,
-                    pending: uids.filter(u => allVotes[u][restaurant] === undefined).length,
+                    liked: uids.filter(u => allVotes[u][toVoteKey(restaurant)] === true).length,
+                    disliked: uids.filter(u => allVotes[u][toVoteKey(restaurant)] === false).length,
+                    pending: uids.filter(u => allVotes[u][toVoteKey(restaurant)] === undefined).length,
                     total: uids.length
                 };
             };
@@ -1064,7 +1066,7 @@
             // --- SWIPE SCREEN ---
             if (screen === 'swipe') {
                 const activeList = narrowedList || restaurants;
-                const unvoted = activeList.filter(r => userVotes[r] === undefined);
+                const unvoted = activeList.filter(r => userVotes[toVoteKey(r)] === undefined);
                 const cur = unvoted[0] || null;
                 const allDone = activeList.length > 0 && unvoted.length === 0;
                 const votedCount = activeList.length - unvoted.length;
@@ -1123,7 +1125,7 @@
                             {participantNames.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mb-5 fade-in" style={{animationDelay:'0.05s'}}>
                                     {Object.entries(participants).map(([uid, name]) => {
-                                        const doneVoting = activeList.length > 0 && activeList.every(r => allVotes[uid]?.[r] !== undefined);
+                                        const doneVoting = activeList.length > 0 && activeList.every(r => allVotes[uid]?.[toVoteKey(r)] !== undefined);
                                         return (
                                             <span key={uid} className={`px-3 py-1 rounded-full text-xs font-medium border ${doneVoting ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>{name}</span>
                                         );
