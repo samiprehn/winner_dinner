@@ -72,7 +72,14 @@
         }
         .btn-pass:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(220, 38, 38, 0.3); }
         .btn-pass:active { transform: scale(0.98); }
-        
+
+        .btn-super {
+            background: linear-gradient(135deg, #b45309, #f59e0b);
+            transition: all 0.15s;
+        }
+        .btn-super:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(245,158,11,0.35); }
+        .btn-super:active { transform: scale(0.98); }
+
         .fade-in { animation: fadeIn 0.4s ease-out both; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(12px); }
@@ -548,7 +555,15 @@
             const calculateMatches = (restaurantList, votes, parts) => {
                 const uids = Object.keys(parts);
                 if (uids.length < 2) { setMatches([]); return; }
-                setMatches(restaurantList.filter(r => uids.every(u => votes[u]?.[toVoteKey(r)] === true)));
+                const matched = restaurantList.filter(r =>
+                    uids.every(u => votes[u]?.[toVoteKey(r)] === true || votes[u]?.[toVoteKey(r)] === 'super')
+                );
+                matched.sort((a, b) => {
+                    const superA = uids.filter(u => votes[u]?.[toVoteKey(a)] === 'super').length;
+                    const superB = uids.filter(u => votes[u]?.[toVoteKey(b)] === 'super').length;
+                    return superB - superA;
+                });
+                setMatches(matched);
             };
 
             const addRestaurant = async (nameOverride) => {
@@ -1174,11 +1189,18 @@
                                         <h3 className="text-green-400 font-bold text-lg">Everyone Agrees!</h3>
                                     </div>
                                     <p className="text-green-400/60 text-sm mb-3">All {participantNames.length} participants liked:</p>
-                                    {matches.map((r, i) => (
-                                        <div key={i} className="bg-green-400/10 rounded-xl px-4 py-3 mb-2 last:mb-0">
-                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 font-semibold hover:underline">{r}</a>
-                                        </div>
-                                    ))}
+                                    {matches.map((r, i) => {
+                                        const uids = Object.keys(allVotes);
+                                        const superCount = uids.filter(u => allVotes[u]?.[toVoteKey(r)] === 'super').length;
+                                        return (
+                                            <div key={i} className="bg-green-400/10 rounded-xl px-4 py-3 mb-2 last:mb-0">
+                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 font-semibold hover:underline">{r}</a>
+                                                {superCount > 0 && (
+                                                    <span className="ml-2 text-amber-400 text-xs">{'★'.repeat(superCount)}</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
 
@@ -1345,6 +1367,7 @@
                                                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`}
                                                        target="_blank" rel="noopener noreferrer"
                                                        className="flex-1 text-white/80 text-sm font-medium hover:underline">{r}</a>
+                                                    {myVote === 'super' && <span className="text-amber-400 text-xs">★</span>}
                                                     {myVote === true && <span className="text-green-400 text-xs">✓</span>}
                                                     {myVote === false && <span className="text-red-400 text-xs">✗</span>}
                                                 </div>
@@ -1365,19 +1388,33 @@
                                     <p className="text-white/40 mb-6">You've voted on all {activeList.length} restaurants.</p>
                                     {matches.length === 0 && (() => {
                                         const total = Object.keys(participants).length;
-                                        const counts = activeList.map(r => ({ name: r, yes: Object.values(allVotes).filter(v => v[toVoteKey(r)] === true).length }));
+                                        const counts = activeList.map(r => {
+                                            const vals = Object.values(allVotes).map(v => v[toVoteKey(r)]);
+                                            return {
+                                                name: r,
+                                                yes: vals.filter(v => v === true || v === 'super').length,
+                                                no: vals.filter(v => v === false).length,
+                                                super: vals.filter(v => v === 'super').length,
+                                            };
+                                        });
                                         const maxYes = Math.max(...counts.map(c => c.yes));
-                                        const best = counts.filter(c => c.yes === maxYes);
-                                        return maxYes > 0 ? (
+                                        if (maxYes === 0) return null;
+                                        const best = counts
+                                            .filter(c => c.yes === maxYes)
+                                            .sort((a, b) => a.no !== b.no ? a.no - b.no : b.super - a.super);
+                                        return (
                                             <div className="mb-6 bg-green-500/10 border border-green-500/20 rounded-xl p-4">
                                                 <p className="text-green-400/60 text-sm mb-2">No full match — best partial match{best.length > 1 ? 'es' : ''} ({maxYes}/{total}):</p>
                                                 {best.map(b => (
                                                     <div key={b.name} className="mb-2 last:mb-0">
                                                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name)}`} target="_blank" rel="noopener noreferrer" className="font-display text-xl text-green-300 font-bold block hover:underline">{b.name}</a>
+                                                        {b.super > 0 && (
+                                                            <span className="text-amber-400 text-xs">{'★'.repeat(b.super)} {b.super} super like{b.super > 1 ? 's' : ''}</span>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>
-                                        ) : null;
+                                        );
                                     })()}
                                     <div className="flex flex-col gap-3">
                                         {matches.length > 1 && (
@@ -1401,7 +1438,7 @@
                                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer" className="font-display text-4xl text-white mb-2 block hover:underline">{cur}</a>
                                     </div>
                                     <div className="p-4">
-                                        <div className="flex gap-3">
+                                        <div className="flex gap-3 mb-3">
                                             <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
                                                 <XIcon className="w-7 h-7" /> No
                                             </button>
@@ -1412,6 +1449,10 @@
                                                 <HeartIcon className="w-7 h-7" /> Yes
                                             </button>
                                         </div>
+                                        <button onClick={() => vote('super')}
+                                            className="w-full btn-super text-white py-3 rounded-2xl flex items-center justify-center gap-2 text-base font-semibold">
+                                            ★ Super Like
+                                        </button>
                                     </div>
                                 </div>
                             )}
