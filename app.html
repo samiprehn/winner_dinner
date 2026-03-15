@@ -897,13 +897,13 @@
             const handleTouchEnd = React.useCallback(() => {
                 const dx = swipeXRef.current;
                 if (Math.abs(dx) > 80) {
-                    vote(dx > 0);
+                    skip();
                 }
                 setSwipeX(0);
                 swipeXRef.current = 0;
                 setSwiping(false);
                 touchStartRef.current = null;
-            }, [vote]);
+            }, [skip]);
 
             // Attach touch listeners with { passive: false } so preventDefault works on mobile
             useEffect(() => {
@@ -1359,11 +1359,7 @@
                                         touchAction: 'none',
                                     }}
                                 >
-                                    <div className="restaurant-card-bg p-5 text-center" style={swipeX !== 0 ? {
-                                        background: swipeX > 0
-                                            ? `linear-gradient(225deg, rgba(22,163,74,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
-                                            : `linear-gradient(135deg, rgba(220,38,38,${Math.min(Math.abs(swipeX)/200,0.4)}) 0%, #16213e 50%, #0f3460 100%)`
-                                    } : {}}>
+                                    <div className="restaurant-card-bg p-5 text-center">
                                         <p className="text-white/30 text-sm mb-2 tracking-wider uppercase">{votedCount + 1} / {activeList.length}</p>
                                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer" className="font-display text-4xl text-white mb-2 block hover:underline">{cur}</a>
                                     </div>
@@ -1373,7 +1369,7 @@
                                                 <XIcon className="w-7 h-7" /> No
                                             </button>
                                             <button onClick={skip} className="flex-1 btn-skip text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                <SkipIcon className="w-7 h-7" /> Skip
+                                                Skip
                                             </button>
                                             <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
                                                 <HeartIcon className="w-7 h-7" /> Yes
