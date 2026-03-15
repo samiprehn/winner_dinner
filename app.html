@@ -57,6 +57,15 @@
         .btn-like:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(22, 163, 74, 0.3); }
         .btn-like:active { transform: scale(0.98); }
         
+        .btn-skip {
+            background: linear-gradient(135deg, #374151, #4b5563);
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-skip:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+        .btn-skip:active { transform: scale(0.98); }
+
         .btn-pass {
             background: linear-gradient(135deg, #dc2626, #ef4444);
             transition: all 0.15s;
@@ -112,6 +121,11 @@
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
         // Icons
+        const SkipIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="9 18 15 12 9 6"/><line x1="17" y1="6" x2="17" y2="18"/>
+            </svg>
+        );
         const HeartIcon = ({ className }) => (
             <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -821,6 +835,20 @@
                 }
             };
 
+            const skip = async () => {
+                const activeList = narrowedList || restaurants;
+                const unvoted = activeList.filter(r => userVotes[toVoteKey(r)] === undefined);
+                const restaurant = unvoted[0];
+                if (!restaurant) return;
+                setUserVotes(prev => ({ ...prev, [toVoteKey(restaurant)]: 'skip' }));
+                try {
+                    await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).update({ [toVoteKey(restaurant)]: 'skip' });
+                } catch (err) {
+                    console.error('Skip save error:', err);
+                    setError('Failed to save vote.');
+                }
+            };
+
             const resetVotes = async () => {
                 setUserVotes({});
                 setCurrentIndex(0);
@@ -1344,10 +1372,13 @@
                                     <div className="p-4">
                                         <div className="flex gap-3">
                                             <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                <XIcon className="w-7 h-7" /> Pass
+                                                <XIcon className="w-7 h-7" /> No
+                                            </button>
+                                            <button onClick={skip} className="flex-1 btn-skip text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
+                                                <SkipIcon className="w-7 h-7" /> Skip
                                             </button>
                                             <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                <HeartIcon className="w-7 h-7" /> Like
+                                                <HeartIcon className="w-7 h-7" /> Yes
                                             </button>
                                         </div>
                                     </div>
