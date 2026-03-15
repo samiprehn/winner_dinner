@@ -825,8 +825,10 @@
             const vote = async (liked) => {
                 const activeList = narrowedList || restaurants;
                 const unvoted = activeList.filter(r => userVotes[toVoteKey(r)] === undefined);
-                const restaurant = unvoted[0];
+                const unvotedNotSkipped = unvoted.filter(r => !skipped.includes(r));
+                const restaurant = unvotedNotSkipped.length > 0 ? unvotedNotSkipped[0] : skipped.find(r => userVotes[toVoteKey(r)] === undefined);
                 if (!restaurant) return;
+                setSkipped(prev => prev.filter(r => r !== restaurant));
                 setUserVotes(prev => ({ ...prev, [toVoteKey(restaurant)]: liked }));
                 try {
                     await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).update({ [toVoteKey(restaurant)]: liked });
