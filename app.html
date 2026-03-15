@@ -231,6 +231,7 @@
             const [matches, setMatches] = useState([]);
             const [userVotes, setUserVotes] = useState({});
             const [skipped, setSkipped] = useState([]);
+            const [browseMode, setBrowseMode] = useState(false);
             const [allVotes, setAllVotes] = useState({});
             const [participants, setParticipants] = useState({});
             const [loading, setLoading] = useState(false);
@@ -1317,9 +1318,43 @@
                                 </div>
                             </div>
                             {/* Voting */}
+                            {restaurants.length > 0 && (
+                                <div className="flex gap-2 mb-4">
+                                    <button onClick={() => setBrowseMode(false)}
+                                        className={`flex-1 text-xs py-2 rounded-xl font-medium transition-colors ${!browseMode ? 'bg-white/15 text-white' : 'bg-white/5 text-white/30 hover:text-white/50'}`}>
+                                        Vote
+                                    </button>
+                                    <button onClick={() => setBrowseMode(true)}
+                                        className={`flex-1 text-xs py-2 rounded-xl font-medium transition-colors ${browseMode ? 'bg-white/15 text-white' : 'bg-white/5 text-white/30 hover:text-white/50'}`}>
+                                        Browse ({activeList.length})
+                                    </button>
+                                </div>
+                            )}
                             {restaurants.length === 0 ? (
                                 <div className="text-center py-16 fade-in" style={{animationDelay:'0.15s'}}>
                                     <p className="text-white/30 text-lg">Add some restaurants to get started</p>
+                                </div>
+                            ) : browseMode ? (
+                                <div className="bg-white/5 rounded-2xl p-5 card-glow slide-up">
+                                    <div className="space-y-2 mb-4">
+                                        {activeList.map((r, i) => {
+                                            const myVote = userVotes[toVoteKey(r)];
+                                            return (
+                                                <div key={i} className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5">
+                                                    <span className="text-white/30 text-sm w-5 text-right flex-shrink-0">{i + 1}</span>
+                                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`}
+                                                       target="_blank" rel="noopener noreferrer"
+                                                       className="flex-1 text-white/80 text-sm font-medium hover:underline">{r}</a>
+                                                    {myVote === true && <span className="text-green-400 text-xs">✓</span>}
+                                                    {myVote === false && <span className="text-red-400 text-xs">✗</span>}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <button onClick={() => setBrowseMode(false)}
+                                        className="w-full btn-like text-white py-3 rounded-xl font-semibold text-sm">
+                                        Start Voting →
+                                    </button>
                                 </div>
                             ) : allDone ? (
                                 <div className="bg-white/5 rounded-2xl p-10 text-center card-glow slide-up">
