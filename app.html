@@ -230,6 +230,7 @@
             const [searchLocation, setSearchLocation] = useState('');
             const [matches, setMatches] = useState([]);
             const [userVotes, setUserVotes] = useState({});
+            const [skipped, setSkipped] = useState([]);
             const [allVotes, setAllVotes] = useState({});
             const [participants, setParticipants] = useState({});
             const [loading, setLoading] = useState(false);
@@ -835,22 +836,18 @@
                 }
             };
 
-            const skip = async () => {
+            const skip = () => {
                 const activeList = narrowedList || restaurants;
                 const unvoted = activeList.filter(r => userVotes[toVoteKey(r)] === undefined);
-                const restaurant = unvoted[0];
+                const notSkipped = unvoted.filter(r => !skipped.includes(r));
+                const restaurant = notSkipped[0] ?? skipped.find(r => userVotes[toVoteKey(r)] === undefined);
                 if (!restaurant) return;
-                setUserVotes(prev => ({ ...prev, [toVoteKey(restaurant)]: 'skip' }));
-                try {
-                    await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).update({ [toVoteKey(restaurant)]: 'skip' });
-                } catch (err) {
-                    console.error('Skip save error:', err);
-                    setError('Failed to save vote.');
-                }
+                setSkipped(prev => [...prev.filter(r => r !== restaurant), restaurant]);
             };
 
             const resetVotes = async () => {
                 setUserVotes({});
+                setSkipped([]);
                 setCurrentIndex(0);
                 try {
                     await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).set({});
@@ -1095,7 +1092,8 @@
             if (screen === 'swipe') {
                 const activeList = narrowedList || restaurants;
                 const unvoted = activeList.filter(r => userVotes[toVoteKey(r)] === undefined);
-                const cur = unvoted[0] || null;
+                const unvotedNotSkipped = unvoted.filter(r => !skipped.includes(r));
+                const cur = unvotedNotSkipped.length > 0 ? unvotedNotSkipped[0] : (skipped.find(r => userVotes[toVoteKey(r)] === undefined) || null);
                 const allDone = activeList.length > 0 && unvoted.length === 0;
                 const votedCount = activeList.length - unvoted.length;
                 const status = cur ? getVoterStatus(cur) : null;
