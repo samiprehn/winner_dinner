@@ -167,6 +167,25 @@
         const auth = firebase.auth();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
+        // In the Android app, popups don't work in the WebView — use the
+        // native Google account picker and hand its credential to the web SDK.
+        function isNativeApp() {
+            return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+        }
+        async function googleSignIn() {
+            if (isNativeApp()) {
+                const FirebaseAuthentication = window.Capacitor.registerPlugin('FirebaseAuthentication');
+                const result = await FirebaseAuthentication.signInWithGoogle();
+                const credential = firebase.auth.GoogleAuthProvider.credential(result.credential.idToken);
+                await auth.signInWithCredential(credential);
+            } else {
+                await auth.signInWithPopup(googleProvider);
+            }
+        }
+        function isCancelledSignIn(err) {
+            return err.code === 'auth/popup-closed-by-user' || /cancel/i.test(err.message || '');
+        }
+
         const joinParam = new URLSearchParams(window.location.search).get('join');
         const appUrl = joinParam ? 'app.html?join=' + encodeURIComponent(joinParam) : 'app.html';
 
@@ -184,10 +203,10 @@
             btn.textContent = 'Signing in...';
             errorBox.style.display = 'none';
             try {
-                await auth.signInWithPopup(googleProvider);
+                await googleSignIn();
                 window.location.href = appUrl;
             } catch (err) {
-                if (err.code !== 'auth/popup-closed-by-user') {
+                if (!isCancelledSignIn(err)) {
                     errorBox.textContent = 'Sign in failed. Please try again.';
                     errorBox.style.display = 'block';
                 }

@@ -1,0 +1,11 @@
+{
+  "appId": "io.github.samiprehn.winnerdinner",
+  "appName": "Winner Dinner",
+  "webDir": "www",
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": ["google.com"]
+    }
+  }
+}

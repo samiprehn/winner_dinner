@@ -1,0 +1,16 @@
+{
+  "name": "winner-dinner",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node scripts/build-www.js"
+  },
+  "dependencies": {
+    "@capacitor-firebase/authentication": "^7.0.0",
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}

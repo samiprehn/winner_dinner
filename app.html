@@ -127,6 +127,33 @@
         const auth = firebase.auth();
         const googleProvider = new firebase.auth.GoogleAuthProvider();
 
+        // In the Android app, popups don't work in the WebView — use the
+        // native Google account picker and hand its credential to the web SDK.
+        const isNativeApp = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+        async function googleSignIn() {
+            if (isNativeApp()) {
+                const FirebaseAuthentication = window.Capacitor.registerPlugin('FirebaseAuthentication');
+                const result = await FirebaseAuthentication.signInWithGoogle();
+                const credential = firebase.auth.GoogleAuthProvider.credential(result.credential.idToken);
+                await auth.signInWithCredential(credential);
+            } else {
+                await auth.signInWithPopup(googleProvider);
+            }
+        }
+        const isCancelledSignIn = (err) => err.code === 'auth/popup-closed-by-user' || /cancel/i.test(err.message || '');
+
+        // target="_blank" does nothing in the WebView; top-level navigation to an
+        // external origin opens the system browser and keeps the app where it is.
+        if (isNativeApp()) {
+            document.addEventListener('click', (e) => {
+                const a = e.target.closest && e.target.closest('a[target="_blank"]');
+                if (a && a.href) {
+                    e.preventDefault();
+                    window.location.href = a.href;
+                }
+            });
+        }
+
         // Icons
         const SkipIcon = ({ className }) => (
             <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -373,9 +400,9 @@
                 setLoading(true);
                 setError('');
                 try {
-                    await auth.signInWithPopup(googleProvider);
+                    await googleSignIn();
                 } catch (err) {
-                    if (err.code !== 'auth/popup-closed-by-user') {
+                    if (!isCancelledSignIn(err)) {
                         setError('Sign in failed. Please try again.');
                     }
                 } finally {
