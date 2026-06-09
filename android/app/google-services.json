@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1063162162261",
+    "firebase_url": "https://winner-dinner-3e154-default-rtdb.firebaseio.com",
+    "project_id": "winner-dinner-3e154",
+    "storage_bucket": "winner-dinner-3e154.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1063162162261:android:599604bc3cf829e8fc78dc",
+        "android_client_info": {
+          "package_name": "io.github.samiprehn.winnerdinner"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1063162162261-c5g90fqpb9oivagal1muu59se68s521l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.github.samiprehn.winnerdinner",
+            "certificate_hash": "7b72b090638ca0102a2bd14ee3c2630edb3ddce4"
+          }
+        },
+        {
+          "client_id": "1063162162261-edjt23q4q6vli6oojllcclrpfnhaarld.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAG9HghWMBtwR2zHruPIevDgfGIgDUQ4JU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1063162162261-edjt23q4q6vli6oojllcclrpfnhaarld.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
