@@ -207,7 +207,7 @@
                 window.location.href = appUrl;
             } catch (err) {
                 if (!isCancelledSignIn(err)) {
-                    errorBox.textContent = 'Sign in failed. Please try again.';
+                    errorBox.textContent = 'Sign in failed: ' + (err.code || '') + ' ' + (err.message || err);
                     errorBox.style.display = 'block';
                 }
                 btn.disabled = false;
