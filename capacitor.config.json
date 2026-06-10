@@ -2,6 +2,10 @@
   "appId": "io.github.samiprehn.winnerdinner",
   "appName": "Winner Dinner",
   "webDir": "www",
+  "server": {
+    "hostname": "samiprehn.github.io",
+    "androidScheme": "https"
+  },
   "plugins": {
     "FirebaseAuthentication": {
       "skipNativeAuth": false,
