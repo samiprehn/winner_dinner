@@ -174,7 +174,7 @@
         }
         async function googleSignIn() {
             if (isNativeApp()) {
-                const FirebaseAuthentication = window.Capacitor.registerPlugin('FirebaseAuthentication');
+                const FirebaseAuthentication = window.Capacitor.Plugins.FirebaseAuthentication;
                 const result = await FirebaseAuthentication.signInWithGoogle();
                 const credential = firebase.auth.GoogleAuthProvider.credential(result.credential.idToken);
                 await auth.signInWithCredential(credential);
