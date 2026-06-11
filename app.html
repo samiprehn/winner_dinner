@@ -249,6 +249,21 @@
 
         // *** REPLACE THIS with your Cloudflare Worker URL ***
         const PROXY_URL = 'https://winner-dinner.sami-prehn.workers.dev';
+        const PUSH_URL = 'https://winner-dinner-push.sami-prehn.workers.dev';
+
+        // Fire-and-forget: tell the push worker to notify the other party members.
+        async function sendPush(sessionCode, payload) {
+            try {
+                const idToken = await auth.currentUser.getIdToken();
+                fetch(PUSH_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+                    body: JSON.stringify({ sessionCode, ...payload })
+                }).catch(() => {});
+            } catch (e) {
+                console.error('Push notify failed:', e);
+            }
+        }
 
         function WinnerDinner() {
             const [user, setUser] = useState(null);
@@ -305,6 +320,22 @@
                 return () => unsubscribe();
             }, []);
 
+            // Register this device for push notifications (native app only)
+            useEffect(() => {
+                if (!user || !isNativeApp()) return;
+                (async () => {
+                    try {
+                        const FirebaseMessaging = window.Capacitor.Plugins.FirebaseMessaging;
+                        const perm = await FirebaseMessaging.requestPermissions();
+                        if (perm.receive !== 'granted') return;
+                        const { token } = await FirebaseMessaging.getToken();
+                        if (token) await database.ref(`users/${user.uid}/fcmTokens/${token}`).set(true);
+                    } catch (e) {
+                        console.error('Push registration failed:', e);
+                    }
+                })();
+            }, [user]);
+
             // Auto-join from invite link
             useEffect(() => {
                 if (!user) return;
@@ -323,6 +354,9 @@
                                 name: data.name || code,
                                 joinedAt: Date.now()
                             });
+                            const isNewMember = !(data.participants || {})[user.uid];
+                            await database.ref(`sessions/${code}/participants/${user.uid}`).set(user.displayName || 'Anonymous');
+                            if (isNewMember) sendPush(code, { event: 'join' });
                             setSessionCode(code);
                             setCurrentIndex(0);
                             setScreen('swipe');
@@ -461,6 +495,9 @@
                             name: data.name || code,
                             joinedAt: Date.now()
                         });
+                        const isNewMember = !(data.participants || {})[user.uid];
+                        await database.ref(`sessions/${code}/participants/${user.uid}`).set(user.displayName || 'Anonymous');
+                        if (isNewMember) sendPush(code, { event: 'join' });
                         setSessionCode(code);
                         setInputCode('');
                         setCurrentIndex(0);
@@ -579,12 +616,17 @@
 
             const toVoteKey = s => s.replace(/\./g, '%2E').replace(/#/g, '%23').replace(/\$/g, '%24').replace(/\[/g, '%5B').replace(/\]/g, '%5D').replace(/\//g, '%2F');
 
-            const calculateMatches = (restaurantList, votes, parts) => {
+            const getMatches = (restaurantList, votes, parts) => {
                 const uids = Object.keys(parts);
-                if (uids.length < 2) { setMatches([]); return; }
-                const matched = restaurantList.filter(r =>
+                if (uids.length < 2) return [];
+                return restaurantList.filter(r =>
                     uids.every(u => votes[u]?.[toVoteKey(r)] === true || votes[u]?.[toVoteKey(r)] === 'super')
                 );
+            };
+
+            const calculateMatches = (restaurantList, votes, parts) => {
+                const uids = Object.keys(parts);
+                const matched = getMatches(restaurantList, votes, parts);
                 matched.sort((a, b) => {
                     const superA = uids.filter(u => votes[u]?.[toVoteKey(a)] === 'super').length;
                     const superB = uids.filter(u => votes[u]?.[toVoteKey(b)] === 'super').length;
@@ -605,6 +647,7 @@
                     if (!list.includes(name)) {
                         list.push(name);
                         await database.ref(`sessions/${sessionCode}/restaurants`).set(list);
+                        sendPush(sessionCode, { event: 'added', count: 1 });
                         if (!nameOverride) setNewRestaurant('');
                     } else {
                         setError('Already in the list.');
@@ -640,6 +683,7 @@
                     });
                     if (added > 0) {
                         await database.ref(`sessions/${sessionCode}/restaurants`).set(list);
+                        sendPush(sessionCode, { event: 'added', count: added });
                     }
                     setSelectedResults(new Set());
                     setSearchResults([]);
@@ -873,6 +917,13 @@
                 if (!restaurant) return;
                 setSkipped(prev => prev.filter(r => r !== restaurant));
                 setUserVotes(prev => ({ ...prev, [toVoteKey(restaurant)]: liked }));
+                // If this vote just completed a match, notify the others
+                if (liked === true || liked === 'super') {
+                    const before = getMatches(restaurants, allVotes, participants);
+                    const myVotes = { ...(allVotes[user.uid] || {}), [toVoteKey(restaurant)]: liked };
+                    const after = getMatches(restaurants, { ...allVotes, [user.uid]: myVotes }, participants);
+                    after.filter(r => !before.includes(r)).forEach(r => sendPush(sessionCode, { event: 'match', restaurant: r }));
+                }
                 try {
                     await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).update({ [toVoteKey(restaurant)]: liked });
                 } catch (err) {
