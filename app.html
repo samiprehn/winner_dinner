@@ -103,6 +103,36 @@
         .restaurant-card-bg {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
         }
+
+        .celebration-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.75);
+            animation: fadeIn 0.3s ease-out;
+            overflow: hidden;
+        }
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 16px;
+            top: -20px;
+            border-radius: 2px;
+            animation: confettiFall linear forwards;
+        }
+        @keyframes confettiFall {
+            to { transform: translateY(110vh) rotate(720deg); }
+        }
+        .pop-in { animation: popIn 0.45s cubic-bezier(0.18, 1.25, 0.4, 1) both; }
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.6); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .spin { animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -141,6 +171,20 @@
             }
         }
         const isCancelledSignIn = (err) => err.code === 'auth/popup-closed-by-user' || /cancel/i.test(err.message || '');
+
+        // Tactile feedback: native haptics in the app, vibration API on the web
+        const haptic = (type) => {
+            try {
+                if (isNativeApp()) {
+                    const Haptics = window.Capacitor.Plugins.Haptics;
+                    if (type === 'success') Haptics.notification({ type: 'SUCCESS' });
+                    else if (type === 'medium') Haptics.impact({ style: 'MEDIUM' });
+                    else Haptics.impact({ style: 'LIGHT' });
+                } else if (navigator.vibrate) {
+                    navigator.vibrate(type === 'success' ? [60, 60, 120] : 15);
+                }
+            } catch (e) { /* haptics are never worth an error */ }
+        };
 
         // target="_blank" does nothing in the WebView; top-level navigation to an
         // external origin opens the system browser and keeps the app where it is.
@@ -310,6 +354,13 @@
             const dragStartY = React.useRef(0);
             const dragCardRects = React.useRef([]);
             const listContainerRef = React.useRef(null);
+            const [celebration, setCelebration] = useState(null);
+            const prevMatchesRef = React.useRef(null);
+            const [pullY, setPullY] = useState(0);
+            const [refreshing, setRefreshing] = useState(false);
+            const pullStartRef = React.useRef(null);
+            const uiRef = React.useRef({});
+            uiRef.current = { screen, showRestaurantList, celebration };
 
             // Auth listener
             useEffect(() => {
@@ -318,6 +369,35 @@
                     setAuthLoading(false);
                 });
                 return () => unsubscribe();
+            }, []);
+
+            // Android back button: step back through the UI instead of closing the app
+            useEffect(() => {
+                if (!isNativeApp()) return;
+                const App = window.Capacitor.Plugins.App;
+                const sub = App.addListener('backButton', () => {
+                    const ui = uiRef.current;
+                    if (ui.celebration) setCelebration(null);
+                    else if (ui.showRestaurantList) setShowRestaurantList(false);
+                    else if (ui.screen === 'swipe') { setScreen('sessions'); setSessionCode(''); setError(''); }
+                    else App.exitApp();
+                });
+                return () => Promise.resolve(sub).then(h => h.remove());
+            }, []);
+
+            // Tapping a push notification jumps straight to that dinner party
+            useEffect(() => {
+                if (!isNativeApp()) return;
+                const FirebaseMessaging = window.Capacitor.Plugins.FirebaseMessaging;
+                const sub = FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
+                    const code = event.notification?.data?.sessionCode;
+                    if (code) {
+                        setSessionCode(code);
+                        setCurrentIndex(0);
+                        setScreen('swipe');
+                    }
+                });
+                return () => Promise.resolve(sub).then(h => h.remove());
             }, []);
 
             // Register this device for push notifications (native app only)
@@ -407,7 +487,8 @@
                 if (!sessionCode || screen !== 'swipe' || !user) return;
                 
                 const sessionRef = database.ref(`sessions/${sessionCode}`);
-                
+                prevMatchesRef.current = null; // first snapshot sets the celebration baseline
+
                 // Register as participant
                 database.ref(`sessions/${sessionCode}/participants/${user.uid}`)
                     .set(user.displayName || 'Anonymous')
@@ -587,6 +668,38 @@
                 setDragState(null);
             };
 
+            // Pull-to-refresh on the sessions list (data is realtime; this re-reads
+            // once and gives the reassuring spinner people expect from apps)
+            const refreshSessions = async () => {
+                try {
+                    const snap = await database.ref(`users/${user.uid}/sessions`).once('value');
+                    setUserSessions(snap.val() || {});
+                    await new Promise(r => setTimeout(r, 600));
+                } catch (e) { /* listeners keep data fresh regardless */ }
+                setRefreshing(false);
+            };
+
+            const handlePullStart = (e) => {
+                pullStartRef.current = window.scrollY <= 0 ? e.touches[0].clientY : null;
+            };
+            const handlePullMove = (e) => {
+                if (pullStartRef.current === null || dragState || refreshing) return;
+                const dy = e.touches[0].clientY - pullStartRef.current;
+                if (dy > 10) {
+                    clearTimeout(longPressTimer.current);
+                    setPullY(Math.min((dy - 10) * 0.4, 70));
+                }
+            };
+            const handlePullEnd = () => {
+                if (pullY >= 55 && !refreshing) {
+                    setRefreshing(true);
+                    haptic('light');
+                    refreshSessions();
+                }
+                setPullY(0);
+                pullStartRef.current = null;
+            };
+
             const openSession = (code) => {
                 setSessionCode(code);
                 setCurrentIndex(0);
@@ -627,6 +740,15 @@
             const calculateMatches = (restaurantList, votes, parts) => {
                 const uids = Object.keys(parts);
                 const matched = getMatches(restaurantList, votes, parts);
+                // Celebrate matches that appear after the first snapshot
+                if (prevMatchesRef.current) {
+                    const fresh = matched.filter(r => !prevMatchesRef.current.includes(r));
+                    if (fresh.length > 0) {
+                        setCelebration(fresh[0]);
+                        haptic('success');
+                    }
+                }
+                prevMatchesRef.current = matched.slice();
                 matched.sort((a, b) => {
                     const superA = uids.filter(u => votes[u]?.[toVoteKey(a)] === 'super').length;
                     const superB = uids.filter(u => votes[u]?.[toVoteKey(b)] === 'super').length;
@@ -634,6 +756,21 @@
                 });
                 setMatches(matched);
             };
+
+            // Celebration auto-dismisses
+            useEffect(() => {
+                if (!celebration) return;
+                const t = setTimeout(() => setCelebration(null), 5000);
+                return () => clearTimeout(t);
+            }, [celebration]);
+
+            const confetti = React.useMemo(() => !celebration ? [] :
+                Array.from({ length: 50 }, () => ({
+                    left: Math.random() * 100,
+                    color: ['#e11d48', '#9333ea', '#22c55e', '#f59e0b', '#ffd700', '#3b82f6'][Math.floor(Math.random() * 6)],
+                    duration: 2.5 + Math.random() * 2,
+                    delay: Math.random() * 0.8,
+                })), [celebration]);
 
             const addRestaurant = async (nameOverride) => {
                 const name = (nameOverride || newRestaurant).trim();
@@ -915,6 +1052,7 @@
                 const unvotedNotSkipped = unvoted.filter(r => !skipped.includes(r));
                 const restaurant = unvotedNotSkipped.length > 0 ? unvotedNotSkipped[0] : skipped.find(r => userVotes[toVoteKey(r)] === undefined);
                 if (!restaurant) return;
+                haptic(liked === 'super' ? 'medium' : 'light');
                 setSkipped(prev => prev.filter(r => r !== restaurant));
                 setUserVotes(prev => ({ ...prev, [toVoteKey(restaurant)]: liked }));
                 // If this vote just completed a match, notify the others
@@ -938,6 +1076,7 @@
                 const notSkipped = unvoted.filter(r => !skipped.includes(r));
                 const restaurant = notSkipped[0] ?? skipped.find(r => userVotes[toVoteKey(r)] === undefined);
                 if (!restaurant) return;
+                haptic('light');
                 setSkipped(prev => [...prev.filter(r => r !== restaurant), restaurant]);
             };
 
@@ -1051,8 +1190,19 @@
             if (screen === 'sessions') {
                 const entries = Object.entries(userSessions).sort((a, b) => (a[1].sortOrder ?? Infinity) - (b[1].sortOrder ?? Infinity) || (b[1].joinedAt || 0) - (a[1].joinedAt || 0));
                 return (
-                    <div className="min-h-screen p-4 relative z-10">
+                    <div className="min-h-screen p-4 relative z-10"
+                        onTouchStart={handlePullStart}
+                        onTouchMove={handlePullMove}
+                        onTouchEnd={handlePullEnd}
+                    >
                         <div className="max-w-md mx-auto pt-6">
+                            {(pullY > 0 || refreshing) && (
+                                <div className="flex items-center justify-center overflow-hidden"
+                                    style={{ height: refreshing ? 40 : pullY, transition: refreshing ? 'height 0.2s' : 'none' }}>
+                                    <div className={`w-6 h-6 border-2 border-white/20 border-t-white/70 rounded-full ${refreshing ? 'spin' : ''}`}
+                                        style={!refreshing ? { transform: `rotate(${pullY * 4}deg)` } : undefined} />
+                                </div>
+                            )}
                             <div className="flex items-center justify-between mb-8 fade-in">
                                 <div className="flex items-center gap-1.5">
                                     <img src="windin_logo.png" className="w-14 h-14" alt="Winner Dinner" />
@@ -1198,6 +1348,24 @@
 
                 return (
                     <div className="min-h-screen p-4 relative z-10">
+                        {celebration && (
+                            <div className="celebration-overlay" onClick={() => setCelebration(null)}>
+                                {confetti.map((c, i) => (
+                                    <div key={i} className="confetti-piece" style={{
+                                        left: `${c.left}%`,
+                                        backgroundColor: c.color,
+                                        animationDuration: `${c.duration}s`,
+                                        animationDelay: `${c.delay}s`,
+                                    }} />
+                                ))}
+                                <div className="text-center px-8 pop-in">
+                                    <p className="text-6xl mb-4">🎉</p>
+                                    <h2 className="font-display text-4xl text-green-300 font-bold mb-3">It's a match!</h2>
+                                    <p className="text-white/80 text-xl">Everyone wants <span className="text-green-300 font-semibold">{celebration}</span></p>
+                                    <p className="text-white/30 text-sm mt-8">Tap anywhere to dismiss</p>
+                                </div>
+                            </div>
+                        )}
                         <div className="max-w-md mx-auto pt-4">
                             {/* Header */}
                             <div className="flex items-center gap-3 mb-6 fade-in">

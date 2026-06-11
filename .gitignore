@@ -3,3 +3,4 @@ www/
 *.keystore
 .DS_Store
 key.json
+*firebase-adminsdk*.json
