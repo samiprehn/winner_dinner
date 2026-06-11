@@ -56,7 +56,6 @@ answer Yes, with "shared content is only visible to invited group members."
 | Personal info → Name | Yes | No | No | Yes | App functionality (shown to your party) |
 | Personal info → Email address | Yes | No | No | Yes | App functionality (account/sign-in) |
 | Location → Approximate location | Yes | No | Yes | No (optional features) | App functionality (find nearby restaurants) |
-| Photos → (profile photo via Google) | Yes | No | No | Yes | App functionality |
 | App activity → Other user-generated content | Yes | No | No | Yes | App functionality (party names, restaurants, votes) |
 | Device IDs → (push token) | Yes | No | No | No | App functionality (notifications) |
 
