@@ -1081,10 +1081,10 @@
                                             <div
                                                 key={code}
                                                 data-session-card
-                                                className={`w-full bg-white/5 rounded-2xl p-5 card-glow text-left fade-in ${isDragging ? 'z-50 shadow-2xl scale-105 bg-white/10' : 'transition-transform'}`}
+                                                className={`w-full bg-white/5 rounded-2xl p-5 card-glow text-left ${dragState ? '' : 'fade-in'} ${isDragging ? 'z-50 shadow-2xl bg-white/10' : 'transition-transform'}`}
                                                 style={{
                                                     animationDelay: `${0.1 + idx * 0.05}s`,
-                                                    transform: `translateY(${translateY}px)`,
+                                                    transform: isDragging ? `translateY(${translateY}px) scale(1.03)` : `translateY(${translateY}px)`,
                                                     position: 'relative',
                                                     zIndex: isDragging ? 50 : 1,
                                                 }}
