@@ -482,6 +482,7 @@
             const [swiping, setSwiping] = useState(false);
             const [candidate, setCandidate] = useState(null);   // 'yes' | 'no' | 'super' while dragging past threshold
             const [flying, setFlying] = useState(null);          // direction the card is flying off
+            const [snapBack, setSnapBack] = useState(false);     // reset transform without animating
             const [undoInfo, setUndoInfo] = useState(null);      // { restaurant, value } after a swipe vote
             const [showSwipeHint, setShowSwipeHint] = useState(false);
             const [addCollapsed, setAddCollapsed] = useState(false);
@@ -894,12 +895,9 @@
                 const uids = Object.keys(parts);
                 const matched = getMatches(restaurantList, votes, parts);
                 // Celebrate matches that appear after the first snapshot
-                if (prevMatchesRef.current) {
-                    const fresh = matched.filter(r => !prevMatchesRef.current.includes(r));
-                    if (fresh.length > 0) {
-                        setCelebration(fresh[0]);
-                        haptic('success');
-                    }
+                if (prevMatchesRef.current && prevMatchesRef.current.length === 0 && matched.length > 0) {
+                    setCelebration(matched[0]);
+                    haptic('success');
                 }
                 prevMatchesRef.current = matched.slice();
                 matched.sort((a, b) => {
@@ -1353,8 +1351,10 @@
                 setTimeout(() => {
                     castVote(restaurant, cand === 'yes' ? true : cand === 'no' ? false : 'super', true);
                     flyingRef.current = false;
+                    setSnapBack(true);
                     setFlying(null);
                     resetSwipe();
+                    setTimeout(() => setSnapBack(false), 60);
                 }, 280);
             };
 
@@ -1580,6 +1580,7 @@
                 const unvoted = activeList.filter(r => userVotes[toVoteKey(r)] === undefined);
                 const unvotedNotSkipped = unvoted.filter(r => !skipped.includes(r));
                 const cur = unvotedNotSkipped.length > 0 ? unvotedNotSkipped[0] : (skipped.find(r => userVotes[toVoteKey(r)] === undefined) || null);
+                const nextCur = unvotedNotSkipped[1] || null;
                 const allDone = activeList.length > 0 && unvoted.length === 0;
                 const votedCount = activeList.length - unvoted.length;
                 const status = cur ? getVoterStatus(cur) : null;
@@ -1696,28 +1697,6 @@
 
                             {error && (
                                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm fade-in">{error}</div>
-                            )}
-
-                            {/* Matches */}
-                            {matches.length > 0 && (
-                                <div className="match-glow bg-green-500/10 border border-green-500/20 rounded-2xl p-4 mb-5 slide-up">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <SparklesIcon className="w-4 h-4 text-green-400" />
-                                        <h3 className="text-green-400 font-bold text-sm">Everyone Agrees!</h3>
-                                    </div>
-                                    {matches.map((r, i) => {
-                                        const uids = Object.keys(allVotes);
-                                        const superCount = uids.filter(u => allVotes[u]?.[toVoteKey(r)] === 'super').length;
-                                        return (
-                                            <div key={i} className="bg-green-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0">
-                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 text-sm font-medium hover:underline">{r}</a>
-                                                {superCount > 0 && (
-                                                    <span className="ml-2 text-amber-400 text-xs">{'★'.repeat(superCount)}</span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
                             )}
 
                             {/* Add Restaurant */}
@@ -1970,71 +1949,116 @@
                                         <button onClick={resetVotes} className="btn-primary text-white px-8 py-3 rounded-xl font-semibold">Start Over</button>
                                     </div>
                                 </div>
-                            ) : (
-                                <div
-                                    ref={cardRef}
-                                    className="relative bg-white/5 rounded-2xl overflow-hidden card-glow"
-                                    style={{
-                                        transform: flying === 'yes' ? 'translate(120vw, -8vh) rotate(30deg)'
-                                            : flying === 'no' ? 'translate(-120vw, -8vh) rotate(-30deg)'
-                                            : flying === 'super' ? 'translate(0, -120vh)'
-                                            : `translate(${swipeX}px, ${swipeY}px) rotate(${swipeX * 0.05}deg)`,
-                                        opacity: flying ? 0 : 1,
-                                        transition: swiping && !flying ? 'none' : 'transform 0.3s ease, opacity 0.3s ease',
-                                        touchAction: 'none',
-                                    }}
-                                >
-                                    {(flying || candidate) && (
-                                        <div className={`swipe-stamp ${
-                                            (flying || candidate) === 'yes' ? 'stamp-yes'
-                                            : (flying || candidate) === 'no' ? 'stamp-no' : 'stamp-super'}`}>
-                                            {(flying || candidate) === 'yes' ? 'YES' : (flying || candidate) === 'no' ? 'NO' : '★ SUPER'}
+                            ) : (() => {
+                                const cardInner = (name) => (
+                                    <React.Fragment>
+                                        <div className="h-1 bg-white/10">
+                                            <div className="h-full bg-gradient-to-r from-green-600 to-green-400"
+                                                style={{ width: `${activeList.length ? (votedCount / activeList.length) * 100 : 0}%`, transition: 'width 0.3s ease' }}></div>
                                         </div>
-                                    )}
-                                    <div className="h-1 bg-white/10">
-                                        <div className="h-full bg-gradient-to-r from-green-600 to-green-400"
-                                            style={{ width: `${activeList.length ? (votedCount / activeList.length) * 100 : 0}%`, transition: 'width 0.3s ease' }}></div>
-                                    </div>
-                                    <div className="restaurant-card-bg p-5 text-center">
-                                        <p className="text-white/30 text-sm mb-2 tracking-wider uppercase">{votedCount + 1} / {activeList.length}</p>
-                                        <span className="font-display text-4xl text-white mb-1 block">{cur}</span>
-                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 text-white/40 text-xs hover:text-white/70 transition-colors">
-                                            <MapPinIcon className="w-3.5 h-3.5" /> View on map
-                                        </a>
-                                    </div>
-                                    {isTouchDevice ? (
-                                        <div className="p-4">
-                                            <div className="flex items-center justify-center gap-6 text-sm font-medium mb-3">
-                                                <span className="text-red-400/80">← No</span>
-                                                <span className="text-amber-400/80">↑ Super Like</span>
-                                                <span className="text-green-400/80">Yes →</span>
-                                            </div>
-                                            <button onClick={skip} className="w-full btn-skip text-white/80 py-3 rounded-2xl text-sm font-semibold">
-                                                Skip for now
-                                            </button>
+                                        <div className="restaurant-card-bg p-5 text-center">
+                                            <p className="text-white/30 text-sm mb-2 tracking-wider uppercase">{votedCount + 1} / {activeList.length}</p>
+                                            <span className="font-display text-4xl text-white mb-1 block">{name}</span>
+                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`} target="_blank" rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 text-white/40 text-xs hover:text-white/70 transition-colors">
+                                                <MapPinIcon className="w-3.5 h-3.5" /> View on map
+                                            </a>
                                         </div>
-                                    ) : (
-                                        <div className="p-4">
-                                            <div className="flex gap-3 mb-3">
-                                                <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                    <XIcon className="w-7 h-7" /> No
-                                                </button>
-                                                <button onClick={skip} className="flex-1 btn-skip text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                    Skip
-                                                </button>
-                                                <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                    <HeartIcon className="w-7 h-7" /> Yes
+                                        {isTouchDevice ? (
+                                            <div className="p-4">
+                                                <div className="flex items-center justify-center gap-6 text-sm font-medium mb-3">
+                                                    <span className="text-red-400/80">← No</span>
+                                                    <span className="text-amber-400/80">↑ Super Like</span>
+                                                    <span className="text-green-400/80">Yes →</span>
+                                                </div>
+                                                <button onClick={skip} className="w-full btn-skip text-white/80 py-3 rounded-2xl text-sm font-semibold">
+                                                    Skip for now
                                                 </button>
                                             </div>
-                                            <button onClick={() => vote('super')}
-                                                className="w-full btn-super text-white py-3 rounded-2xl flex items-center justify-center gap-2 text-base font-semibold">
-                                                ★ Super Like
-                                            </button>
+                                        ) : (
+                                            <div className="p-4">
+                                                <div className="flex gap-3 mb-3">
+                                                    <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
+                                                        <XIcon className="w-7 h-7" /> No
+                                                    </button>
+                                                    <button onClick={skip} className="flex-1 btn-skip text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
+                                                        Skip
+                                                    </button>
+                                                    <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
+                                                        <HeartIcon className="w-7 h-7" /> Yes
+                                                    </button>
+                                                </div>
+                                                <button onClick={() => vote('super')}
+                                                    className="w-full btn-super text-white py-3 rounded-2xl flex items-center justify-center gap-2 text-base font-semibold">
+                                                    ★ Super Like
+                                                </button>
+                                            </div>
+                                        )}
+                                    </React.Fragment>
+                                );
+                                return (
+                                    <div className="relative">
+                                        {/* next card waits underneath, Tinder-style */}
+                                        {nextCur && (
+                                            <div className="absolute inset-0 bg-white/5 rounded-2xl overflow-hidden card-glow"
+                                                style={{
+                                                    transform: flying ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(10px)',
+                                                    transition: 'transform 0.25s ease',
+                                                    pointerEvents: 'none',
+                                                    zIndex: 0,
+                                                }}>
+                                                {cardInner(nextCur)}
+                                            </div>
+                                        )}
+                                        <div
+                                            ref={cardRef}
+                                            className="relative bg-white/5 rounded-2xl overflow-hidden card-glow"
+                                            style={{
+                                                transform: flying === 'yes' ? 'translate(120vw, -8vh) rotate(30deg)'
+                                                    : flying === 'no' ? 'translate(-120vw, -8vh) rotate(-30deg)'
+                                                    : flying === 'super' ? 'translate(0, -120vh)'
+                                                    : `translate(${swipeX}px, ${swipeY}px) rotate(${swipeX * 0.05}deg)`,
+                                                opacity: flying ? 0 : 1,
+                                                transition: (swiping || snapBack) && !flying ? 'none' : 'transform 0.3s ease, opacity 0.3s ease',
+                                                touchAction: 'none',
+                                                zIndex: 1,
+                                            }}
+                                        >
+                                            {(flying || candidate) && (
+                                                <div className={`swipe-stamp ${
+                                                    (flying || candidate) === 'yes' ? 'stamp-yes'
+                                                    : (flying || candidate) === 'no' ? 'stamp-no' : 'stamp-super'}`}>
+                                                    {(flying || candidate) === 'yes' ? 'YES' : (flying || candidate) === 'no' ? 'NO' : '★ SUPER'}
+                                                </div>
+                                            )}
+                                            {cardInner(cur)}
                                         </div>
-                                    )}
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Matches */}
+                            {matches.length > 0 && (
+                                <div className="match-glow bg-green-500/10 border border-green-500/20 rounded-2xl p-4 mb-5 slide-up">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <SparklesIcon className="w-4 h-4 text-green-400" />
+                                        <h3 className="text-green-400 font-bold text-sm">Everyone Agrees!</h3>
+                                    </div>
+                                    {matches.map((r, i) => {
+                                        const uids = Object.keys(allVotes);
+                                        const superCount = uids.filter(u => allVotes[u]?.[toVoteKey(r)] === 'super').length;
+                                        return (
+                                            <div key={i} className="bg-green-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0">
+                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 text-sm font-medium hover:underline">{r}</a>
+                                                {superCount > 0 && (
+                                                    <span className="ml-2 text-amber-400 text-xs">{'★'.repeat(superCount)}</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
+
 
                         </div>
 
