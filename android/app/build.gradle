@@ -9,8 +9,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI stamps each build with the workflow run number so every upload
         // to Play has a fresh, increasing versionCode. Local builds stay at 1.
-        versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
-        versionName "1.0." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        def ciRun = System.getenv("GITHUB_RUN_NUMBER")
+        versionCode ciRun ? ciRun.toInteger() : 1
+        versionName ciRun ? "1.0.${ciRun}" : "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
