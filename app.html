@@ -148,6 +148,53 @@
         }
         .spin { animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Screen-to-screen navigation transitions */
+        .screen-fwd { animation: screenFwd 0.28s cubic-bezier(0.25, 0.8, 0.35, 1) both; }
+        @keyframes screenFwd {
+            from { opacity: 0.3; transform: translateX(64px); }
+            to { opacity: 1; transform: none; }
+        }
+        .screen-back { animation: screenBack 0.28s cubic-bezier(0.25, 0.8, 0.35, 1) both; }
+        @keyframes screenBack {
+            from { opacity: 0.3; transform: translateX(-64px); }
+            to { opacity: 1; transform: none; }
+        }
+
+        /* Skeleton loaders */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.11) 37%, rgba(255,255,255,0.05) 63%);
+            background-size: 400% 100%;
+            animation: shimmer 1.4s ease infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+
+        /* Bottom sheet */
+        .sheet-backdrop {
+            position: fixed; inset: 0; z-index: 90;
+            background: rgba(0,0,0,0.6);
+            animation: fadeIn 0.2s ease-out both;
+        }
+        .bottom-sheet {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 95;
+            background: #1c1c1e;
+            border-radius: 24px 24px 0 0;
+            padding: 12px 20px calc(28px + env(safe-area-inset-bottom));
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            animation: sheetUp 0.28s cubic-bezier(0.25, 0.8, 0.35, 1) both;
+        }
+        @keyframes sheetUp {
+            from { transform: translateY(100%); }
+            to { transform: none; }
+        }
+        .sheet-handle {
+            width: 36px; height: 4px; border-radius: 2px;
+            background: rgba(255,255,255,0.2);
+            margin: 0 auto 18px;
+        }
     </style>
 </head>
 <body>
@@ -381,8 +428,11 @@
             const [pullY, setPullY] = useState(0);
             const [refreshing, setRefreshing] = useState(false);
             const pullStartRef = React.useRef(null);
+            const navDir = React.useRef('fwd');
+            const [sessionsLoaded, setSessionsLoaded] = useState(false);
+            const [partyLoaded, setPartyLoaded] = useState(false);
             const uiRef = React.useRef({});
-            uiRef.current = { screen, showRestaurantList, celebration };
+            uiRef.current = { screen, showRestaurantList, celebration, confirmLeave };
 
             // Auth listener
             useEffect(() => {
@@ -400,8 +450,9 @@
                 const sub = App.addListener('backButton', () => {
                     const ui = uiRef.current;
                     if (ui.celebration) setCelebration(null);
+                    else if (ui.confirmLeave) setConfirmLeave(null);
                     else if (ui.showRestaurantList) setShowRestaurantList(false);
-                    else if (ui.screen === 'swipe') { setScreen('sessions'); setSessionCode(''); setError(''); }
+                    else if (ui.screen === 'swipe') { navDir.current = 'back'; setScreen('sessions'); setSessionCode(''); setError(''); }
                     else App.exitApp();
                 });
                 return () => Promise.resolve(sub).then(h => h.remove());
@@ -416,7 +467,7 @@
                     if (code) {
                         setSessionCode(code);
                         setCurrentIndex(0);
-                        setScreen('swipe');
+                        navDir.current = 'fwd'; setScreen('swipe');
                     }
                 });
                 return () => Promise.resolve(sub).then(h => h.remove());
@@ -461,7 +512,7 @@
                             if (isNewMember) sendPush(code, { event: 'join' });
                             setSessionCode(code);
                             setCurrentIndex(0);
-                            setScreen('swipe');
+                            navDir.current = 'fwd'; setScreen('swipe');
                         } else {
                             setError('Session not found. The invite link may be invalid.');
                         }
@@ -476,7 +527,7 @@
             useEffect(() => {
                 if (!user) return;
                 const ref = database.ref(`users/${user.uid}/sessions`);
-                ref.on('value', (snap) => setUserSessions(snap.val() || {}));
+                ref.on('value', (snap) => { setUserSessions(snap.val() || {}); setSessionsLoaded(true); });
                 return () => ref.off();
             }, [user]);
 
@@ -510,6 +561,7 @@
                 
                 const sessionRef = database.ref(`sessions/${sessionCode}`);
                 prevMatchesRef.current = null; // first snapshot sets the celebration baseline
+                setPartyLoaded(false);
 
                 // Register as participant
                 database.ref(`sessions/${sessionCode}/participants/${user.uid}`)
@@ -518,6 +570,7 @@
                 
                 sessionRef.on('value', (snap) => {
                     const data = snap.val();
+                    setPartyLoaded(true);
                     if (data) {
                         setRestaurants(data.restaurants || []);
                         setNarrowedList(data.narrowed || null);
@@ -576,7 +629,7 @@
                     setSessionName('');
                     setShowCreate(false);
                     setCurrentIndex(0);
-                    setScreen('swipe');
+                    navDir.current = 'fwd'; setScreen('swipe');
                 } catch (err) {
                     setError('Failed to create session.');
                     console.error(err);
@@ -604,7 +657,7 @@
                         setSessionCode(code);
                         setInputCode('');
                         setCurrentIndex(0);
-                        setScreen('swipe');
+                        navDir.current = 'fwd'; setScreen('swipe');
                     } else {
                         setError('Session not found. Check the code.');
                     }
@@ -726,7 +779,7 @@
                 setSessionCode(code);
                 setCurrentIndex(0);
                 setError('');
-                setScreen('swipe');
+                navDir.current = 'fwd'; setScreen('swipe');
             };
 
             const inviteFriends = async () => {
@@ -744,6 +797,7 @@
             };
 
             const goBack = () => {
+                navDir.current = 'back';
                 setScreen('sessions');
                 setSessionCode('');
                 setError('');
@@ -1212,7 +1266,7 @@
             if (screen === 'sessions') {
                 const entries = Object.entries(userSessions).sort((a, b) => (a[1].sortOrder ?? Infinity) - (b[1].sortOrder ?? Infinity) || (b[1].joinedAt || 0) - (a[1].joinedAt || 0));
                 return (
-                    <div className="min-h-screen p-4 relative z-10"
+                    <div key="sessions" className={`min-h-screen p-4 relative z-10 ${navDir.current === 'back' ? 'screen-back' : ''}`}
                         onTouchStart={handlePullStart}
                         onTouchMove={handlePullMove}
                         onTouchEnd={handlePullEnd}
@@ -1275,7 +1329,16 @@
                             )}
 
                             {/* List */}
-                            {entries.length > 0 ? (
+                            {!sessionsLoaded ? (
+                                <div className="space-y-3">
+                                    {[0, 1, 2].map(i => (
+                                        <div key={i} className="rounded-2xl p-5 card-glow skeleton" style={{animationDelay: `${i * 0.15}s`}}>
+                                            <div className="h-5 w-2/5 rounded-md bg-white/10 mb-3"></div>
+                                            <div className="h-3.5 w-3/5 rounded-md bg-white/5"></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : entries.length > 0 ? (
                                 <div className="space-y-3" ref={listContainerRef}
                                     onMouseMove={dragState ? (e) => handleDragMove(e.clientY) : undefined}
                                     onMouseUp={dragState ? handleDragEnd : undefined}
@@ -1322,20 +1385,10 @@
                                                             <p className="text-white/30 text-sm mt-1">{names.join(', ')}</p>
                                                         )}
                                                     </div>
-                                                    {confirmLeave === code ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <button onClick={() => leaveSession(code)} className="text-red-400 text-xs font-semibold px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors">Leave</button>
-                                                            <button onClick={() => setConfirmLeave(null)} className="text-white/30 text-xs px-2 py-1 rounded-lg hover:text-white/50 transition-colors">Cancel</button>
-                                                        </div>
-                                                    ) : (
-                                                        <button onClick={() => setConfirmLeave(code)} className="text-white/20 hover:text-red-400 transition-colors ml-3">
-                                                            <TrashIcon className="w-4 h-4" />
-                                                        </button>
-                                                    )}
+                                                    <button onClick={() => setConfirmLeave(code)} className="text-white/20 hover:text-red-400 transition-colors ml-3">
+                                                        <TrashIcon className="w-4 h-4" />
+                                                    </button>
                                                 </div>
-                                                {confirmLeave === code && (
-                                                    <p className="text-red-400 text-xs mt-2">Are you sure you want to leave the party?</p>
-                                                )}
                                             </div>
                                         );
                                     })}
@@ -1353,6 +1406,28 @@
                                 <a href="https://samiprehn.github.io/" target="_blank" rel="noopener noreferrer" className="hover:text-white/60 transition-colors" style={{textDecoration:'none'}}>Sami's other sites →</a>
                             </div>
                         </div>
+
+                        {/* Leave-party bottom sheet */}
+                        {confirmLeave && (
+                            <React.Fragment>
+                                <div className="sheet-backdrop" onClick={() => setConfirmLeave(null)}></div>
+                                <div className="bottom-sheet">
+                                    <div className="sheet-handle"></div>
+                                    <h3 className="text-white font-semibold text-lg mb-1">
+                                        Leave {(sessionParticipants[confirmLeave]?.sessionName) || userSessions[confirmLeave]?.name || 'this party'}?
+                                    </h3>
+                                    <p className="text-white/40 text-sm mb-5">Your votes will be removed. You can rejoin later with an invite or the party code.</p>
+                                    <button onClick={() => { haptic('medium'); leaveSession(confirmLeave); }}
+                                        className="w-full btn-pass text-white py-3.5 rounded-xl font-semibold mb-2">
+                                        Leave Party
+                                    </button>
+                                    <button onClick={() => setConfirmLeave(null)}
+                                        className="w-full bg-white/5 hover:bg-white/10 text-white/60 py-3.5 rounded-xl font-medium transition-colors">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </React.Fragment>
+                        )}
                     </div>
                 );
             }
@@ -1368,7 +1443,7 @@
                 const status = cur ? getVoterStatus(cur) : null;
 
                 return (
-                    <div className="min-h-screen p-4 relative z-10">
+                    <div key="swipe" className="min-h-screen p-4 relative z-10 screen-fwd">
                         {celebration && (
                             <div className="celebration-overlay" onClick={() => setCelebration(null)}>
                                 {confetti.map((c, i) => (
@@ -1597,7 +1672,14 @@
                                         </div>
                                     )}
                                     {(addMode === 'search' || addMode === 'nearby' || addMode === 'cuisine') && searchLoading && (
-                                        <p className="text-white/20 text-xs mt-3 text-center pulse-soft">Searching...</p>
+                                        <div className="mt-3 space-y-1.5">
+                                            {[0, 1, 2, 3].map(i => (
+                                                <div key={i} className="rounded-xl px-3 py-2.5 skeleton" style={{animationDelay: `${i * 0.12}s`}}>
+                                                    <div className="h-4 w-1/2 rounded bg-white/10 mb-1.5"></div>
+                                                    <div className="h-3 w-3/4 rounded bg-white/5"></div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
                                     {addMode === 'search' && newRestaurant.length >= 2 && !searchLoading && searchResults.length === 0 && (
                                         <p className="text-white/20 text-xs mt-3 text-center">No results found</p>
@@ -1620,7 +1702,19 @@
                                     </button>
                                 </div>
                             )}
-                            {restaurants.length === 0 ? (
+                            {!partyLoaded ? (
+                                <div className="rounded-2xl overflow-hidden card-glow">
+                                    <div className="skeleton h-36"></div>
+                                    <div className="p-4 bg-white/5">
+                                        <div className="flex gap-3 mb-3">
+                                            <div className="flex-1 h-16 rounded-2xl skeleton"></div>
+                                            <div className="flex-1 h-16 rounded-2xl skeleton" style={{animationDelay:'0.1s'}}></div>
+                                            <div className="flex-1 h-16 rounded-2xl skeleton" style={{animationDelay:'0.2s'}}></div>
+                                        </div>
+                                        <div className="h-12 rounded-2xl skeleton" style={{animationDelay:'0.3s'}}></div>
+                                    </div>
+                                </div>
+                            ) : restaurants.length === 0 ? (
                                 <div className="text-center py-16 fade-in" style={{animationDelay:'0.15s'}}>
                                     <p className="text-white/30 text-lg">Add some restaurants to get started</p>
                                 </div>
