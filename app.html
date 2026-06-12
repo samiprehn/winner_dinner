@@ -1674,17 +1674,17 @@
 
                             {/* Matches */}
                             {matches.length > 0 && (
-                                <div className="match-glow bg-green-500/10 border border-green-500/20 rounded-2xl p-5 mb-5 slide-up">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <SparklesIcon className="w-5 h-5 text-green-400" />
-                                        <h3 className="text-green-400 font-bold text-lg">Everyone Agrees!</h3>
+                                <div className="match-glow bg-green-500/10 border border-green-500/20 rounded-2xl p-4 mb-5 slide-up">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <SparklesIcon className="w-4 h-4 text-green-400" />
+                                        <h3 className="text-green-400 font-bold text-sm">Everyone Agrees!</h3>
                                     </div>
                                     {matches.map((r, i) => {
                                         const uids = Object.keys(allVotes);
                                         const superCount = uids.filter(u => allVotes[u]?.[toVoteKey(r)] === 'super').length;
                                         return (
-                                            <div key={i} className="bg-green-400/10 rounded-xl px-4 py-3 mb-2 last:mb-0">
-                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 font-semibold hover:underline">{r}</a>
+                                            <div key={i} className="bg-green-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0">
+                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 text-sm font-medium hover:underline">{r}</a>
                                                 {superCount > 0 && (
                                                     <span className="ml-2 text-amber-400 text-xs">{'★'.repeat(superCount)}</span>
                                                 )}
