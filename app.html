@@ -469,7 +469,6 @@
             const [currentSessionName, setCurrentSessionName] = useState('');
             const [editingName, setEditingName] = useState(false);
             const [editNameValue, setEditNameValue] = useState('');
-            const [showRestaurantList, setShowRestaurantList] = useState(false);
             const [sessionParticipants, setSessionParticipants] = useState({});
             const [searchResults, setSearchResults] = useState([]);
             const [narrowedList, setNarrowedList] = useState(null);
@@ -505,7 +504,7 @@
             const [sessionsLoaded, setSessionsLoaded] = useState(false);
             const [partyLoaded, setPartyLoaded] = useState(false);
             const uiRef = React.useRef({});
-            uiRef.current = { screen, showRestaurantList, celebration, confirmLeave };
+            uiRef.current = { screen, celebration, confirmLeave };
 
             // Auth listener
             useEffect(() => {
@@ -524,7 +523,6 @@
                     const ui = uiRef.current;
                     if (ui.celebration) setCelebration(null);
                     else if (ui.confirmLeave) setConfirmLeave(null);
-                    else if (ui.showRestaurantList) setShowRestaurantList(false);
                     else if (ui.screen === 'swipe') { navDir.current = 'back'; setScreen('sessions'); setSessionCode(''); setError(''); }
                     else App.exitApp();
                 });
@@ -1659,12 +1657,40 @@
                                         const entries = Object.entries(participants);
                                         const display = shortNames(entries.map(([, n]) => n));
                                         return entries.map(([uid], i) => {
-                                            const doneVoting = activeList.length > 0 && activeList.every(r => allVotes[uid]?.[toVoteKey(r)] !== undefined);
+                                            const votedN = activeList.filter(r => allVotes[uid]?.[toVoteKey(r)] !== undefined).length;
+                                            const doneVoting = activeList.length > 0 && votedN === activeList.length;
                                             return (
-                                                <span key={uid} className={`px-3 py-1 rounded-full text-xs font-medium border ${doneVoting ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>{display[i]}</span>
+                                                <span key={uid} className={`px-3 py-1 rounded-full text-xs font-medium border ${doneVoting ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400/90'}`}>
+                                                    {display[i]}{doneVoting ? ' ✓' : activeList.length > 0 ? ` · ${votedN}/${activeList.length}` : ''}
+                                                </span>
                                             );
                                         });
                                     })()}
+                                </div>
+                            )}
+
+                            {/* Who's holding things up (shown once you've finished voting) */}
+                            {allDone && (() => {
+                                const all = Object.entries(participants);
+                                const display = shortNames(all.map(([, n]) => n));
+                                const names = all
+                                    .map(([uid], i) => ({ uid, name: display[i] }))
+                                    .filter(({ uid }) => uid !== user.uid && !activeList.every(r => allVotes[uid]?.[toVoteKey(r)] !== undefined))
+                                    .map(w => w.name);
+                                if (names.length === 0) return null;
+                                const list = names.length === 1 ? names[0]
+                                    : names.length === 2 ? `${names[0]} and ${names[1]}`
+                                    : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+                                return <p className="text-white/40 text-sm mb-5 -mt-2 fade-in">Waiting on {list} to finish voting…</p>;
+                            })()}
+
+                            {/* Solo-party invite nudge */}
+                            {partyLoaded && Object.keys(participants).length === 1 && (
+                                <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4 mb-5 flex items-center justify-between gap-3 fade-in">
+                                    <p className="text-white/60 text-sm">Voting's no fun alone — invite your crew</p>
+                                    <button onClick={inviteFriends} className="btn-primary text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0 flex items-center gap-1.5">
+                                        <ShareIcon className="w-4 h-4" /> Invite
+                                    </button>
                                 </div>
                             )}
 
@@ -1888,6 +1914,9 @@
                                                     {myVote === 'super' && <span className="text-amber-400 text-xs">★</span>}
                                                     {myVote === true && <span className="text-green-400 text-xs">✓</span>}
                                                     {myVote === false && <span className="text-red-400 text-xs">✗</span>}
+                                                    <button onClick={() => deleteRestaurant(r)} className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0" title="Remove restaurant">
+                                                        <TrashIcon className="w-4 h-4" />
+                                                    </button>
                                                 </div>
                                             );
                                         })}
@@ -1962,9 +1991,17 @@
                                             {(flying || candidate) === 'yes' ? 'YES' : (flying || candidate) === 'no' ? 'NO' : '★ SUPER'}
                                         </div>
                                     )}
+                                    <div className="h-1 bg-white/10">
+                                        <div className="h-full bg-gradient-to-r from-green-600 to-green-400"
+                                            style={{ width: `${activeList.length ? (votedCount / activeList.length) * 100 : 0}%`, transition: 'width 0.3s ease' }}></div>
+                                    </div>
                                     <div className="restaurant-card-bg p-5 text-center">
                                         <p className="text-white/30 text-sm mb-2 tracking-wider uppercase">{votedCount + 1} / {activeList.length}</p>
-                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer" className="font-display text-4xl text-white mb-2 block hover:underline">{cur}</a>
+                                        <span className="font-display text-4xl text-white mb-1 block">{cur}</span>
+                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-white/40 text-xs hover:text-white/70 transition-colors">
+                                            <MapPinIcon className="w-3.5 h-3.5" /> View on map
+                                        </a>
                                     </div>
                                     {isTouchDevice ? (
                                         <div className="p-4">
@@ -1999,36 +2036,6 @@
                                 </div>
                             )}
 
-                            {/* Remove Restaurants */}
-                            {restaurants.length > 0 && (
-                                <div className="mt-5 fade-in">
-                                    <button
-                                        onClick={() => setShowRestaurantList(!showRestaurantList)}
-                                        className={`w-full bg-white/5 rounded-2xl px-4 py-3 card-glow flex items-center justify-center gap-2 transition-colors ${showRestaurantList ? 'bg-red-500/10 border border-red-500/20' : 'hover:bg-white/8'}`}
-                                    >
-                                        <TrashIcon className={`w-4 h-4 ${showRestaurantList ? 'text-red-400' : 'text-white/30'}`} />
-                                        <span className={`text-sm font-medium ${showRestaurantList ? 'text-red-400' : 'text-white/30'}`}>Remove Restaurants ({restaurants.length})</span>
-                                    </button>
-                                    {showRestaurantList && (
-                                        <div className="bg-white/5 rounded-2xl p-5 mt-3 card-glow fade-in">
-                                            <div className="space-y-2">
-                                                {restaurants.map((r, i) => (
-                                                    <div key={i} className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-2.5">
-                                                        <span className="text-white/70 text-sm">{r}</span>
-                                                        <button
-                                                            onClick={() => deleteRestaurant(r)}
-                                                            className="text-white/20 hover:text-red-400 transition-colors"
-                                                            title="Remove restaurant"
-                                                        >
-                                                            <TrashIcon className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
                         </div>
 
                         {/* One-time swipe tutorial */}
