@@ -498,6 +498,7 @@
             const listContainerRef = React.useRef(null);
             const [celebration, setCelebration] = useState(null);
             const prevMatchesRef = React.useRef(null);
+            const matchOrderRef = React.useRef([]); // newest-first display order
             const [pullY, setPullY] = useState(0);
             const [refreshing, setRefreshing] = useState(false);
             const pullStartRef = React.useRef(null);
@@ -633,6 +634,7 @@
                 
                 const sessionRef = database.ref(`sessions/${sessionCode}`);
                 prevMatchesRef.current = null; // first snapshot sets the celebration baseline
+                matchOrderRef.current = [];
                 setPartyLoaded(false);
                 let firstSnapshot = true;
 
@@ -899,13 +901,17 @@
                     setCelebration(matched[0]);
                     haptic('success');
                 }
+                // newest matches shown first; first snapshot keeps the default order
+                const known = matchOrderRef.current.filter(r => matched.includes(r));
+                const fresh = matched.filter(r => !known.includes(r));
+                matchOrderRef.current = prevMatchesRef.current === null ? matched.slice() : [...fresh, ...known];
                 prevMatchesRef.current = matched.slice();
                 matched.sort((a, b) => {
                     const superA = uids.filter(u => votes[u]?.[toVoteKey(a)] === 'super').length;
                     const superB = uids.filter(u => votes[u]?.[toVoteKey(b)] === 'super').length;
                     return superB - superA;
                 });
-                setMatches(matched);
+                setMatches(matchOrderRef.current);
             };
 
             // One-time swipe tutorial for touch users
