@@ -1997,15 +1997,15 @@
 
                         {/* One-time swipe tutorial */}
                         {showSwipeHint && cur && (
-                            <div className="celebration-overlay" onClick={dismissSwipeHint} style={{cursor:'pointer'}}>
-                                <div className="text-center px-8 pop-in">
+                            <div className="celebration-overlay" onClick={dismissSwipeHint} style={{cursor:'pointer', background:'rgba(0,0,0,0.85)'}}>
+                                <div className="text-center pop-in mx-6 px-8 py-9 rounded-3xl" style={{background:'#1a1a1c', boxShadow:'0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08)'}}>
                                     <h2 className="font-display text-3xl text-white font-bold mb-8">How to vote</h2>
                                     <div className="space-y-5 text-left inline-block">
-                                        <p className="text-green-400 text-xl font-semibold">Swipe right → <span className="text-white/70 text-base font-normal ml-2">Yes, I'd eat there</span></p>
-                                        <p className="text-red-400 text-xl font-semibold">← Swipe left <span className="text-white/70 text-base font-normal ml-2">No thanks</span></p>
-                                        <p className="text-amber-400 text-xl font-semibold">↑ Swipe up <span className="text-white/70 text-base font-normal ml-2">★ Super Like</span></p>
+                                        <p className="text-green-400 text-xl font-semibold">Swipe right → <span className="text-white/80 text-base font-normal ml-2">Yes, I'd eat there</span></p>
+                                        <p className="text-red-400 text-xl font-semibold">← Swipe left <span className="text-white/80 text-base font-normal ml-2">No thanks</span></p>
+                                        <p className="text-amber-400 text-xl font-semibold">↑ Swipe up <span className="text-white/80 text-base font-normal ml-2">★ Super Like</span></p>
                                     </div>
-                                    <p className="text-white/40 text-sm mt-8">Can't decide? Tap "Skip for now" under the card.<br/>Mis-swiped? You get 4 seconds to undo.</p>
+                                    <p className="text-white/60 text-sm mt-8">Can't decide? Tap "Skip for now" under the card.<br/>Mis-swiped? You get 4 seconds to undo.</p>
                                     <button onClick={dismissSwipeHint} className="btn-primary text-white px-10 py-3 rounded-xl font-semibold mt-8">Got it</button>
                                 </div>
                             </div>
