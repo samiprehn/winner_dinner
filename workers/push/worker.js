@@ -92,6 +92,21 @@ async function getAccessToken(sa) {
     return data.access_token;
 }
 
+// First name, plus last initial / full last name only as needed to
+// disambiguate within the party (mirrors the app's display logic)
+function shortName(fullName, allNames) {
+    const parse = (n) => {
+        const parts = (n || '').trim().split(/\s+/);
+        return { first: parts[0] || 'Someone', last: parts.slice(1).join(' ') };
+    };
+    const me = parse(fullName);
+    const others = allNames.map(parse).filter((p) => p.first === me.first);
+    if (others.length <= 1 || !me.last) return me.first;
+    const initial = me.last[0].toUpperCase();
+    const sameInitial = others.filter((p) => p.last && p.last[0].toUpperCase() === initial);
+    return sameInitial.length > 1 ? `${me.first} ${me.last}` : `${me.first} ${initial}`;
+}
+
 const dbGet = async (path, token) => (await fetch(`${DB_URL}/${path}.json?access_token=${token}`)).json();
 const dbDelete = (path, token) => fetch(`${DB_URL}/${path}.json?access_token=${token}`, { method: 'DELETE' });
 
@@ -115,7 +130,7 @@ export default {
             const session = await dbGet(`sessions/${sessionCode}`, token);
             if (!session?.participants?.[uid]) return json({ error: 'not a participant' }, 403);
 
-            const senderName = session.participants[uid] || 'Someone';
+            const senderName = shortName(session.participants[uid], Object.values(session.participants));
             const partyName = session.name || sessionCode;
             let title, body;
             if (event === 'match' && restaurant) {

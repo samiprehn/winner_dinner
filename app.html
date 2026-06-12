@@ -283,6 +283,22 @@
         // Touch devices vote by swiping; desktop votes with buttons
         const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
+        // Friendly name display: first names; add a last initial when two people
+        // share a first name, and the full last name when the initial ties too.
+        const shortNames = (fullNames) => {
+            const parsed = fullNames.map(n => {
+                const parts = (n || '').trim().split(/\s+/);
+                return { first: parts[0] || 'Someone', last: parts.slice(1).join(' ') };
+            });
+            return parsed.map(p => {
+                const sameFirst = parsed.filter(q => q.first === p.first);
+                if (sameFirst.length === 1 || !p.last) return p.first;
+                const initial = p.last[0].toUpperCase();
+                const sameInitial = sameFirst.filter(q => q.last && q.last[0].toUpperCase() === initial);
+                return sameInitial.length > 1 ? `${p.first} ${p.last}` : `${p.first} ${initial}`;
+            });
+        };
+
         // Tactile feedback: native haptics in the app, vibration API on the web
         const haptic = (type) => {
             try {
@@ -1502,7 +1518,7 @@
                                                     <div className="flex-1 cursor-pointer" onClick={() => { if (!dragState) openSession(code); }}>
                                                         <h3 className="text-white font-semibold text-lg">{displayName}</h3>
                                                         {names.length > 0 && (
-                                                            <p className="text-white/30 text-sm mt-1">{names.join(', ')}</p>
+                                                            <p className="text-white/30 text-sm mt-1">{shortNames(names).join(', ')}</p>
                                                         )}
                                                     </div>
                                                     <button onClick={() => setConfirmLeave(code)} className="text-white/20 hover:text-red-400 transition-colors ml-3">
@@ -1631,12 +1647,16 @@
                             {/* Participants */}
                             {participantNames.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mb-5 fade-in" style={{animationDelay:'0.05s'}}>
-                                    {Object.entries(participants).map(([uid, name]) => {
-                                        const doneVoting = activeList.length > 0 && activeList.every(r => allVotes[uid]?.[toVoteKey(r)] !== undefined);
-                                        return (
-                                            <span key={uid} className={`px-3 py-1 rounded-full text-xs font-medium border ${doneVoting ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>{name}</span>
-                                        );
-                                    })}
+                                    {(() => {
+                                        const entries = Object.entries(participants);
+                                        const display = shortNames(entries.map(([, n]) => n));
+                                        return entries.map(([uid], i) => {
+                                            const doneVoting = activeList.length > 0 && activeList.every(r => allVotes[uid]?.[toVoteKey(r)] !== undefined);
+                                            return (
+                                                <span key={uid} className={`px-3 py-1 rounded-full text-xs font-medium border ${doneVoting ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>{display[i]}</span>
+                                            );
+                                        });
+                                    })()}
                                 </div>
                             )}
 
