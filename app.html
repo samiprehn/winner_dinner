@@ -485,6 +485,7 @@
             const [flying, setFlying] = useState(null);          // direction the card is flying off
             const [undoInfo, setUndoInfo] = useState(null);      // { restaurant, value } after a swipe vote
             const [showSwipeHint, setShowSwipeHint] = useState(false);
+            const [addCollapsed, setAddCollapsed] = useState(false);
             const touchStartRef = React.useRef(null);
             const candRef = React.useRef(null);
             const flyingRef = React.useRef(false);
@@ -634,6 +635,7 @@
                 const sessionRef = database.ref(`sessions/${sessionCode}`);
                 prevMatchesRef.current = null; // first snapshot sets the celebration baseline
                 setPartyLoaded(false);
+                let firstSnapshot = true;
 
                 // Register as participant
                 database.ref(`sessions/${sessionCode}/participants/${user.uid}`)
@@ -643,6 +645,11 @@
                 sessionRef.on('value', (snap) => {
                     const data = snap.val();
                     setPartyLoaded(true);
+                    if (data && firstSnapshot) {
+                        firstSnapshot = false;
+                        // returning voters see the add pane collapsed
+                        setAddCollapsed(Object.keys((data.votes || {})[user.uid] || {}).length > 0);
+                    }
                     if (data) {
                         setRestaurants(data.restaurants || []);
                         setNarrowedList(data.narrowed || null);
@@ -1215,6 +1222,7 @@
             const castVote = async (restaurant, liked, fromSwipe = false) => {
                 if (!restaurant) return;
                 haptic(liked === 'super' ? 'medium' : 'light');
+                if (Object.keys(userVotes).length === 0) setAddCollapsed(true); // first vote tucks the add pane away
                 setSkipped(prev => prev.filter(r => r !== restaurant));
                 setUserVotes(prev => ({ ...prev, [toVoteKey(restaurant)]: liked }));
                 if (fromSwipe) {
@@ -1689,7 +1697,14 @@
                             {/* Add Restaurant */}
                             <div className="mb-5 fade-in" style={{animationDelay:'0.1s'}}>
                                 <div className="bg-white/5 rounded-2xl p-4 card-glow">
-                                    <p className="text-white/60 text-sm mb-3">Add a restaurant</p>
+                                    <button onClick={() => setAddCollapsed(!addCollapsed)} className="w-full flex items-center justify-between text-left">
+                                        <span className="text-white/60 text-sm">Add a restaurant</span>
+                                        <svg className={`w-4 h-4 text-white/40 transition-transform ${addCollapsed ? '' : '-rotate-90'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <polyline points="6 9 12 15 18 9"/>
+                                        </svg>
+                                    </button>
+                                    {!addCollapsed && (
+                                    <div className="mt-3">
                                     <div className="flex gap-2 mb-3">
                                         {[['manual', 'Manual'], ['nearby', 'Nearby'], ['cuisine', 'Cuisine'], ['search', 'Search']].map(([mode, label]) => (
                                             <button
@@ -1825,6 +1840,8 @@
                                     )}
                                     {addMode === 'cuisine' && selectedCuisine && !searchLoading && searchResults.length === 0 && (
                                         <p className="text-white/20 text-xs mt-3 text-center">No {selectedCuisine} restaurants found nearby</p>
+                                    )}
+                                    </div>
                                     )}
                                 </div>
                             </div>
