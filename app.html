@@ -1651,7 +1651,6 @@
                                         <SparklesIcon className="w-5 h-5 text-green-400" />
                                         <h3 className="text-green-400 font-bold text-lg">Everyone Agrees!</h3>
                                     </div>
-                                    <p className="text-green-400/60 text-sm mb-3">All {participantNames.length} participants liked:</p>
                                     {matches.map((r, i) => {
                                         const uids = Object.keys(allVotes);
                                         const superCount = uids.filter(u => allVotes[u]?.[toVoteKey(r)] === 'super').length;
