@@ -195,6 +195,52 @@
             background: rgba(255,255,255,0.2);
             margin: 0 auto 18px;
         }
+
+        /* Swipe-to-vote stamps */
+        .swipe-stamp {
+            position: absolute;
+            top: 16px;
+            z-index: 10;
+            padding: 4px 16px;
+            border: 4px solid;
+            border-radius: 10px;
+            font-weight: 800;
+            font-size: 1.7rem;
+            letter-spacing: 2px;
+            pointer-events: none;
+            animation: stampIn 0.12s ease-out both;
+        }
+        @keyframes stampIn {
+            from { opacity: 0; transform: scale(1.4) rotate(var(--stamp-rot)); }
+            to { opacity: 0.95; transform: scale(1) rotate(var(--stamp-rot)); }
+        }
+        .stamp-yes { left: 16px; color: #4ade80; border-color: #4ade80; --stamp-rot: -14deg; }
+        .stamp-no { right: 16px; color: #f87171; border-color: #f87171; --stamp-rot: 14deg; }
+        .stamp-super { left: 50%; top: auto; bottom: 16px; margin-left: -90px; color: #fbbf24; border-color: #fbbf24; --stamp-rot: -6deg; }
+
+        /* Undo toast */
+        .undo-toast {
+            position: fixed;
+            bottom: calc(24px + env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 80;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            max-width: 92vw;
+            background: #28282b;
+            color: rgba(255,255,255,0.85);
+            font-size: 0.9rem;
+            padding: 12px 18px;
+            border-radius: 14px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.07);
+            animation: toastUp 0.25s cubic-bezier(0.25, 0.8, 0.35, 1) both;
+        }
+        @keyframes toastUp {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
     </style>
 </head>
 <body>
@@ -414,9 +460,15 @@
             const [selectedResults, setSelectedResults] = useState(new Set());
             const [selectedCuisine, setSelectedCuisine] = useState(null);
             const [swipeX, setSwipeX] = useState(0);
+            const [swipeY, setSwipeY] = useState(0);
             const [swiping, setSwiping] = useState(false);
+            const [candidate, setCandidate] = useState(null);   // 'yes' | 'no' | 'super' while dragging past threshold
+            const [flying, setFlying] = useState(null);          // direction the card is flying off
+            const [undoInfo, setUndoInfo] = useState(null);      // { restaurant, value } after a swipe vote
             const touchStartRef = React.useRef(null);
-            const swipeXRef = React.useRef(0);
+            const candRef = React.useRef(null);
+            const flyingRef = React.useRef(false);
+            const undoTimer = React.useRef(null);
             const cardRef = React.useRef(null);
             const [dragState, setDragState] = useState(null);
             const longPressTimer = React.useRef(null);
@@ -1122,15 +1174,23 @@
                 }
             };
 
-            const vote = async (liked) => {
+            const currentRestaurant = () => {
                 const activeList = narrowedList || restaurants;
                 const unvoted = activeList.filter(r => userVotes[toVoteKey(r)] === undefined);
                 const unvotedNotSkipped = unvoted.filter(r => !skipped.includes(r));
-                const restaurant = unvotedNotSkipped.length > 0 ? unvotedNotSkipped[0] : skipped.find(r => userVotes[toVoteKey(r)] === undefined);
+                return unvotedNotSkipped.length > 0 ? unvotedNotSkipped[0] : skipped.find(r => userVotes[toVoteKey(r)] === undefined);
+            };
+
+            const castVote = async (restaurant, liked, fromSwipe = false) => {
                 if (!restaurant) return;
                 haptic(liked === 'super' ? 'medium' : 'light');
                 setSkipped(prev => prev.filter(r => r !== restaurant));
                 setUserVotes(prev => ({ ...prev, [toVoteKey(restaurant)]: liked }));
+                if (fromSwipe) {
+                    clearTimeout(undoTimer.current);
+                    setUndoInfo({ restaurant, value: liked });
+                    undoTimer.current = setTimeout(() => setUndoInfo(null), 4000);
+                }
                 // If this vote just completed a match, notify the others
                 if (liked === true || liked === 'super') {
                     const before = getMatches(restaurants, allVotes, participants);
@@ -1143,6 +1203,26 @@
                 } catch (err) {
                     console.error('Vote save error:', err);
                     setError('Failed to save vote.');
+                }
+            };
+
+            const vote = (liked) => castVote(currentRestaurant(), liked);
+
+            const undoVote = async () => {
+                if (!undoInfo) return;
+                clearTimeout(undoTimer.current);
+                const { restaurant } = undoInfo;
+                setUndoInfo(null);
+                haptic('light');
+                setUserVotes(prev => {
+                    const next = { ...prev };
+                    delete next[toVoteKey(restaurant)];
+                    return next;
+                });
+                try {
+                    await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).update({ [toVoteKey(restaurant)]: null });
+                } catch (err) {
+                    setError('Failed to undo.');
                 }
             };
 
@@ -1193,28 +1273,53 @@
                 return () => el.removeEventListener('touchmove', onTouchMove);
             }, [dragState]);
 
-            const handleTouchStart = React.useCallback((e) => {
-                touchStartRef.current = e.touches[0].clientX;
-                swipeXRef.current = 0;
+            // Swipe-to-vote: right = yes, left = no, up = super like.
+            // Touch-only by design — desktop stays click-driven.
+            const getSwipeCandidate = (dx, dy) =>
+                dy < -80 && Math.abs(dy) > Math.abs(dx) ? 'super'
+                : dx > 90 ? 'yes'
+                : dx < -90 ? 'no'
+                : null;
+
+            const handleTouchStart = (e) => {
+                if (flyingRef.current) return;
+                touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                 setSwiping(true);
-            }, []);
-            const handleTouchMove = React.useCallback((e) => {
-                if (touchStartRef.current === null) return;
+            };
+            const handleTouchMove = (e) => {
+                if (!touchStartRef.current || flyingRef.current) return;
                 e.preventDefault();
-                const dx = e.touches[0].clientX - touchStartRef.current;
-                swipeXRef.current = dx;
+                const dx = e.touches[0].clientX - touchStartRef.current.x;
+                const dy = e.touches[0].clientY - touchStartRef.current.y;
                 setSwipeX(dx);
-            }, []);
-            const handleTouchEnd = React.useCallback(() => {
-                const dx = swipeXRef.current;
-                if (Math.abs(dx) > 80) {
-                    skip();
+                setSwipeY(dy);
+                const cand = getSwipeCandidate(dx, dy);
+                if (cand !== candRef.current) {
+                    candRef.current = cand;
+                    setCandidate(cand);
+                    if (cand) haptic('light'); // tick when crossing the commit threshold
                 }
-                setSwipeX(0);
-                swipeXRef.current = 0;
-                setSwiping(false);
+            };
+            const resetSwipe = () => {
+                setSwipeX(0); setSwipeY(0); setSwiping(false);
+                setCandidate(null); candRef.current = null;
                 touchStartRef.current = null;
-            }, [skip]);
+            };
+            const handleTouchEnd = () => {
+                const cand = candRef.current;
+                if (!cand) { resetSwipe(); return; }
+                const restaurant = currentRestaurant();
+                if (!restaurant) { resetSwipe(); return; }
+                flyingRef.current = true;
+                setFlying(cand);
+                touchStartRef.current = null;
+                setTimeout(() => {
+                    castVote(restaurant, cand === 'yes' ? true : cand === 'no' ? false : 'super', true);
+                    flyingRef.current = false;
+                    setFlying(null);
+                    resetSwipe();
+                }, 280);
+            };
 
             // Attach touch listeners with { passive: false } so preventDefault works on mobile
             useEffect(() => {
@@ -1788,13 +1893,24 @@
                             ) : (
                                 <div
                                     ref={cardRef}
-                                    className="bg-white/5 rounded-2xl overflow-hidden card-glow slide-up"
+                                    className="relative bg-white/5 rounded-2xl overflow-hidden card-glow slide-up"
                                     style={{
-                                        transform: `translateX(${swipeX}px) rotate(${swipeX * 0.05}deg)`,
-                                        transition: swiping ? 'none' : 'transform 0.3s ease',
+                                        transform: flying === 'yes' ? 'translate(120vw, -8vh) rotate(30deg)'
+                                            : flying === 'no' ? 'translate(-120vw, -8vh) rotate(-30deg)'
+                                            : flying === 'super' ? 'translate(0, -120vh)'
+                                            : `translate(${swipeX}px, ${swipeY}px) rotate(${swipeX * 0.05}deg)`,
+                                        opacity: flying ? 0 : 1,
+                                        transition: swiping && !flying ? 'none' : 'transform 0.3s ease, opacity 0.3s ease',
                                         touchAction: 'none',
                                     }}
                                 >
+                                    {(flying || candidate) && (
+                                        <div className={`swipe-stamp ${
+                                            (flying || candidate) === 'yes' ? 'stamp-yes'
+                                            : (flying || candidate) === 'no' ? 'stamp-no' : 'stamp-super'}`}>
+                                            {(flying || candidate) === 'yes' ? 'YES' : (flying || candidate) === 'no' ? 'NO' : '★ SUPER'}
+                                        </div>
+                                    )}
                                     <div className="restaurant-card-bg p-5 text-center">
                                         <p className="text-white/30 text-sm mb-2 tracking-wider uppercase">{votedCount + 1} / {activeList.length}</p>
                                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cur)}`} target="_blank" rel="noopener noreferrer" className="font-display text-4xl text-white mb-2 block hover:underline">{cur}</a>
@@ -1850,6 +1966,16 @@
                                 </div>
                             )}
                         </div>
+
+                        {/* Undo toast after swipe votes */}
+                        {undoInfo && (
+                            <div className="undo-toast">
+                                <span className="truncate">
+                                    Voted {undoInfo.value === 'super' ? '★ Super Like' : undoInfo.value === true ? 'Yes' : 'No'} on {undoInfo.restaurant}
+                                </span>
+                                <button onClick={undoVote} className="text-amber-400 font-bold flex-shrink-0 hover:text-amber-300">Undo</button>
+                            </div>
+                        )}
                     </div>
                 );
             }
