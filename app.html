@@ -18,8 +18,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
     <style>
-        * { font-family: 'DM Sans', sans-serif; }
+        * {
+            font-family: 'DM Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
         .font-display { font-family: 'Playfair Display', serif; }
+
+        /* App-feel: no text selection or long-press callouts on UI chrome,
+           but keep inputs editable */
+        body {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        input, textarea {
+            -webkit-user-select: text;
+            user-select: text;
+        }
         
         body {
             background: #0f0f0f;
@@ -185,6 +200,13 @@
                 }
             } catch (e) { /* haptics are never worth an error */ }
         };
+
+        // In the app, lock the viewport so pinch-zoom doesn't break the illusion.
+        // (Left enabled on the website for accessibility.)
+        if (isNativeApp()) {
+            document.querySelector('meta[name="viewport"]')
+                .setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+        }
 
         // target="_blank" does nothing in the WebView; top-level navigation to an
         // external origin opens the system browser and keeps the app where it is.
