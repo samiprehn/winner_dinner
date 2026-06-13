@@ -7,7 +7,7 @@
 // with 401. This mirrors the winner-dinner-push worker's auth model.
 //
 // Secret required (set to match your existing Places key):
-//   npx wrangler secret put GOOGLE_PLACES_KEY
+//   npx wrangler secret put GOOGLE_PLACES_API_KEY
 // If your current worker reads the key under a different name, either rename it
 // here or set this secret to the same value.
 //
@@ -110,7 +110,7 @@ export default {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Goog-Api-Key': env.GOOGLE_PLACES_KEY,
+                    'X-Goog-Api-Key': env.GOOGLE_PLACES_API_KEY,
                     'X-Goog-FieldMask': FIELD_MASK,
                 },
                 body: JSON.stringify(body),
