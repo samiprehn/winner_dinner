@@ -1638,6 +1638,35 @@
                 const votedCount = activeList.length - unvoted.length;
                 const status = cur ? getVoterStatus(cur) : null;
 
+                // Match-box state (shared by header + body)
+                const waitingNames = (() => {
+                    const all = Object.entries(participants);
+                    const display = shortNames(all.map(([, n]) => n));
+                    return all
+                        .map(([uid], i) => ({ uid, name: display[i] }))
+                        .filter(({ uid }) => uid !== user.uid && !activeList.every(r => allVotes[uid]?.[toVoteKey(r)] !== undefined))
+                        .map(w => w.name);
+                })();
+                const partial = (() => {
+                    if (matches.length > 0) return null;
+                    if (!(allDone && waitingNames.length === 0 && Object.keys(participants).length > 1)) return null;
+                    const total = Object.keys(participants).length;
+                    const counts = activeList.map(r => {
+                        const vals = Object.values(allVotes).map(v => v[toVoteKey(r)]);
+                        return {
+                            name: r,
+                            yes: vals.filter(v => v === true || v === 'super').length,
+                            no: vals.filter(v => v === false).length,
+                            super: vals.filter(v => v === 'super').length,
+                        };
+                    });
+                    const maxYes = Math.max(...counts.map(c => c.yes));
+                    const best = maxYes === 0 ? [] : counts
+                        .filter(c => c.yes === maxYes)
+                        .sort((a, b) => a.no !== b.no ? a.no - b.no : b.super - a.super);
+                    return { total, maxYes, best };
+                })();
+
                 return (
                     <div key="swipe" className="min-h-screen p-4 relative z-10 screen-fwd">
                         {celebration && (
@@ -1739,56 +1768,35 @@
 
                             {/* Matches — fixed height so the voting card never shifts */}
                             {restaurants.length > 0 && (
-                                <div className={`rounded-2xl p-4 mb-5 border ${matches.length > 0 ? 'match-glow bg-green-500/10 border-green-500/20' : 'bg-white/5 border-white/10'}`}>
+                                <div className={`rounded-2xl p-4 mb-5 border ${matches.length > 0 ? 'match-glow bg-green-500/10 border-green-500/20' : partial && partial.maxYes > 0 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-white/5 border-white/10'}`}>
                                     <div className="flex items-center gap-2 mb-2">
-                                        <SparklesIcon className={`w-4 h-4 ${matches.length > 0 ? 'text-green-400' : 'text-white/25'}`} />
-                                        <h3 className={`font-bold text-sm ${matches.length > 0 ? 'text-green-400' : 'text-white/25'}`}>{matches.length > 0 ? `Everyone agrees on ${matches.length} place${matches.length === 1 ? '' : 's'}!` : 'No matches yet'}</h3>
+                                        <SparklesIcon className={`w-4 h-4 ${matches.length > 0 ? 'text-green-400' : partial && partial.maxYes > 0 ? 'text-amber-400' : 'text-white/25'}`} />
+                                        <h3 className={`font-bold text-sm ${matches.length > 0 ? 'text-green-400' : partial && partial.maxYes > 0 ? 'text-amber-400' : 'text-white/25'}`}>{
+                                            matches.length > 0 ? `Everyone agrees on ${matches.length} place${matches.length === 1 ? '' : 's'}!`
+                                            : partial && partial.maxYes > 0 ? `No full match — closest (${partial.maxYes}/${partial.total} liked)`
+                                            : 'No matches yet'
+                                        }</h3>
                                     </div>
                                     <div className="overflow-y-auto no-scrollbar" style={{ height: 84 }}>
                                     {matches.length === 0 && (() => {
-                                        const all = Object.entries(participants);
-                                        const display = shortNames(all.map(([, n]) => n));
-                                        const names = all
-                                            .map(([uid], i) => ({ uid, name: display[i] }))
-                                            .filter(({ uid }) => uid !== user.uid && !activeList.every(r => allVotes[uid]?.[toVoteKey(r)] !== undefined))
-                                            .map(w => w.name);
-                                        if (allDone && names.length > 0) {
-                                            const list = names.length === 1 ? names[0]
-                                                : names.length === 2 ? `${names[0]} and ${names[1]}`
-                                                : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+                                        if (allDone && waitingNames.length > 0) {
+                                            const list = waitingNames.length === 1 ? waitingNames[0]
+                                                : waitingNames.length === 2 ? `${waitingNames[0]} and ${waitingNames[1]}`
+                                                : `${waitingNames.slice(0, -1).join(', ')}, and ${waitingNames[waitingNames.length - 1]}`;
                                             return <p className="text-white/30 text-sm pt-1.5">Waiting on {list} to finish voting…</p>;
                                         }
-                                        if (allDone && names.length === 0 && Object.keys(participants).length > 1) {
-                                            const total = Object.keys(participants).length;
-                                            const counts = activeList.map(r => {
-                                                const vals = Object.values(allVotes).map(v => v[toVoteKey(r)]);
-                                                return {
-                                                    name: r,
-                                                    yes: vals.filter(v => v === true || v === 'super').length,
-                                                    no: vals.filter(v => v === false).length,
-                                                    super: vals.filter(v => v === 'super').length,
-                                                };
-                                            });
-                                            const maxYes = Math.max(...counts.map(c => c.yes));
-                                            if (maxYes === 0) {
-                                                return <p className="text-white/30 text-sm pt-1.5">All votes are in — nobody said yes to anything. Time to start over (or order pizza).</p>;
+                                        if (partial) {
+                                            if (partial.maxYes === 0) {
+                                                return <p className="text-white/30 text-sm pt-1.5">All votes are in — nobody said yes to anything. Start over or add more restaurants.</p>;
                                             }
-                                            const best = counts
-                                                .filter(c => c.yes === maxYes)
-                                                .sort((a, b) => a.no !== b.no ? a.no - b.no : b.super - a.super);
-                                            return (
-                                                <React.Fragment>
-                                                    <p className="text-white/30 text-xs mb-1.5">No full match — closest ({maxYes}/{total} liked):</p>
-                                                    {best.map(b => (
-                                                        <div key={b.name} className="bg-amber-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0">
-                                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name)}`} target="_blank" rel="noopener noreferrer" className="text-amber-300 text-sm font-medium hover:underline">{b.name}</a>
-                                                            {b.super > 0 && (
-                                                                <span className="ml-2 text-amber-400 text-xs">{'★'.repeat(b.super)}</span>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </React.Fragment>
-                                            );
+                                            return partial.best.map(b => (
+                                                <div key={b.name} className="bg-amber-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0">
+                                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name)}`} target="_blank" rel="noopener noreferrer" className="text-amber-300 text-sm font-medium hover:underline">{b.name}</a>
+                                                    {b.super > 0 && (
+                                                        <span className="ml-2 text-amber-400 text-xs">{'★'.repeat(b.super)}</span>
+                                                    )}
+                                                </div>
+                                            ));
                                         }
                                         return <p className="text-white/20 text-sm pt-1.5">When everyone likes the same spot, it shows up here.</p>;
                                     })()}
