@@ -2225,6 +2225,41 @@
         }
 
         ReactDOM.render(<WinnerDinner />, document.getElementById('root'));
+
+        // Auto-update notice (web only): GitHub Pages changes this file's ETag on
+        // every deploy. We baseline the ETag at load, then re-check on focus and
+        // periodically; if it changes, a new version is live — show a refresh
+        // banner. No version param in the URL, nothing to bump by hand. The
+        // native app loads from its local bundle, so it's skipped there.
+        if (!isNativeApp()) {
+            let baselineTag = null;
+            let bannerShown = false;
+            const showUpdateBanner = () => {
+                if (bannerShown) return;
+                bannerShown = true;
+                const bar = document.createElement('div');
+                bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 16px;background:rgba(16,16,20,0.95);backdrop-filter:blur(8px);border-top:1px solid rgba(255,255,255,0.12);color:#fff;font:500 14px -apple-system,system-ui,sans-serif;box-shadow:0 -4px 20px rgba(0,0,0,0.4)';
+                bar.innerHTML = '<span style="opacity:.85">A new version is available.</span>';
+                const btn = document.createElement('button');
+                btn.textContent = 'Refresh';
+                btn.style.cssText = 'background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 16px;font:600 14px inherit;cursor:pointer';
+                btn.onclick = () => location.reload();
+                bar.appendChild(btn);
+                document.body.appendChild(bar);
+            };
+            const checkForUpdate = async () => {
+                try {
+                    const res = await fetch('app.html', { method: 'HEAD', cache: 'no-store' });
+                    const tag = res.headers.get('etag') || res.headers.get('last-modified');
+                    if (!tag) return;
+                    if (baselineTag === null) baselineTag = tag;       // version running now
+                    else if (tag !== baselineTag) showUpdateBanner();   // newer one deployed
+                } catch (e) { /* offline — ignore */ }
+            };
+            checkForUpdate();
+            setInterval(checkForUpdate, 90000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+        }
     </script>
 </body>
 </html>

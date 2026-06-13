@@ -212,12 +212,10 @@
             return err.code === 'auth/popup-closed-by-user' || /cancel/i.test(err.message || '');
         }
 
-        // Bump on each website deploy so testers bypass a cached app.html.
-        const APP_VERSION = '2026-06-13e';
+        // Clean URL — no version param. app.html watches its own ETag and shows
+        // an "update available" banner when a new version is deployed.
         const joinParam = new URLSearchParams(window.location.search).get('join');
-        const appParams = new URLSearchParams({ v: APP_VERSION });
-        if (joinParam) appParams.set('join', joinParam);
-        const appUrl = 'app.html?' + appParams.toString();
+        const appUrl = 'app.html' + (joinParam ? '?join=' + encodeURIComponent(joinParam) : '');
 
         // Google blocks OAuth inside embedded in-app browsers (LINE, Instagram,
         // etc.). Detect those and tell the user to open in a real browser.
