@@ -2044,8 +2044,9 @@
                                     <div className="relative">
                                         {/* next card waits underneath, Tinder-style */}
                                         {nextCur && (
-                                            <div className="absolute inset-0 bg-white/5 rounded-2xl overflow-hidden card-glow"
+                                            <div className="absolute inset-0 rounded-2xl overflow-hidden card-glow"
                                                 style={{
+                                                    background: '#1b1b1c',
                                                     transform: flying ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(10px)',
                                                     transition: 'transform 0.25s ease',
                                                     pointerEvents: 'none',
@@ -2056,8 +2057,9 @@
                                         )}
                                         <div
                                             ref={cardRef}
-                                            className="relative bg-white/5 rounded-2xl overflow-hidden card-glow"
+                                            className="relative rounded-2xl overflow-hidden card-glow"
                                             style={{
+                                                background: '#1b1b1c',
                                                 transform: flying === 'yes' ? 'translate(120vw, -8vh) rotate(30deg)'
                                                     : flying === 'no' ? 'translate(-120vw, -8vh) rotate(-30deg)'
                                                     : flying === 'super' ? 'translate(0, -120vh)'
