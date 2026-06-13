@@ -2010,7 +2010,7 @@
                                                     {myVote === 'super' && <span className="text-amber-400 text-xs">★</span>}
                                                     {myVote === true && <span className="text-green-400 text-xs">✓</span>}
                                                     {myVote === false && <span className="text-red-400 text-xs">✗</span>}
-                                                    <button onClick={() => deleteRestaurant(r)} className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0" title="Remove restaurant">
+                                                    <button onClick={() => deleteRestaurant(r)} className="text-white/20 hover:text-red-400 active:text-red-400 transition-colors flex-shrink-0 p-2 -m-2" title="Remove restaurant">
                                                         <TrashIcon className="w-4 h-4" />
                                                     </button>
                                                 </div>
