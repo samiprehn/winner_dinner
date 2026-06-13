@@ -1758,6 +1758,9 @@
                                                 : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
                                             return <p className="text-white/30 text-sm pt-1.5">Waiting on {list} to finish voting…</p>;
                                         }
+                                        if (allDone && names.length === 0 && Object.keys(participants).length > 1) {
+                                            return <p className="text-white/30 text-sm pt-1.5">All votes are in — no place got a yes from everyone. Check the best partial match below, or start over.</p>;
+                                        }
                                         return <p className="text-white/20 text-sm pt-1.5">When everyone likes the same spot, it shows up here.</p>;
                                     })()}
                                     {matches.map((r, i) => {
