@@ -433,6 +433,15 @@
         const PROXY_URL = 'https://winner-dinner.sami-prehn.workers.dev';
         const PUSH_URL = 'https://winner-dinner-push.sami-prehn.workers.dev';
 
+        // Authenticated GET to the Places proxy — the worker verifies this Firebase
+        // ID token, so only signed-in app users can spend the Google Places quota.
+        async function placesFetch(params) {
+            const idToken = await auth.currentUser.getIdToken();
+            return fetch(`${PROXY_URL}?${params}`, {
+                headers: { Authorization: `Bearer ${idToken}` }
+            });
+        }
+
         // Fire-and-forget: tell the push worker to notify the other party members.
         async function sendPush(sessionCode, payload) {
             try {
@@ -1094,7 +1103,7 @@
                     const params = new URLSearchParams({ mode: 'search', query, limit: '20', radius: '32187' });
                     const ll = userLocation ? userLocation.split(',') : null;
                     if (!locText && ll) { params.set('lat', ll[0]); params.set('lng', ll[1]); }
-                    const res = await fetch(`${PROXY_URL}?${params}`);
+                    const res = await placesFetch(params);
                     const data = await res.json();
                     const userLat = ll ? parseFloat(ll[0]) : null;
                     const userLng = ll ? parseFloat(ll[1]) : null;
@@ -1139,7 +1148,7 @@
                 try {
                     const [lat, lng] = ll.split(',');
                     const params = new URLSearchParams({ mode: 'browse', lat, lng, limit: '20', radius: '32187' });
-                    const res = await fetch(`${PROXY_URL}?${params}`);
+                    const res = await placesFetch(params);
                     const data = await res.json();
                     let results = parseGoogleResults(data, parseFloat(lat), parseFloat(lng));
                     results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
@@ -1195,7 +1204,7 @@
                         limit: '20',
                         radius: '32187'
                     });
-                    const res = await fetch(`${PROXY_URL}?${params}`);
+                    const res = await placesFetch(params);
                     const data = await res.json();
                     let results = parseGoogleResults(data, parseFloat(lat), parseFloat(lng));
                     results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
