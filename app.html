@@ -146,6 +146,9 @@
             from { opacity: 0; transform: scale(0.6); }
             to { opacity: 1; transform: scale(1); }
         }
+        .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
         .spin { animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -320,14 +323,15 @@
                 .setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
         }
 
-        // target="_blank" does nothing in the WebView; top-level navigation to an
-        // external origin opens the system browser and keeps the app where it is.
+        // target="_blank" does nothing in the WebView, and links sharing the
+        // app's hostname (samiprehn.github.io) would load INSIDE the WebView
+        // where the page doesn't exist. AppLauncher forces the system browser.
         if (isNativeApp()) {
             document.addEventListener('click', (e) => {
                 const a = e.target.closest && e.target.closest('a[target="_blank"]');
                 if (a && a.href) {
                     e.preventDefault();
-                    window.location.href = a.href;
+                    window.Capacitor.Plugins.AppLauncher.openUrl({ url: a.href });
                 }
             });
         }
@@ -1719,21 +1723,6 @@
                                 </div>
                             )}
 
-                            {/* Who's holding things up (shown once you've finished voting) */}
-                            {allDone && (() => {
-                                const all = Object.entries(participants);
-                                const display = shortNames(all.map(([, n]) => n));
-                                const names = all
-                                    .map(([uid], i) => ({ uid, name: display[i] }))
-                                    .filter(({ uid }) => uid !== user.uid && !activeList.every(r => allVotes[uid]?.[toVoteKey(r)] !== undefined))
-                                    .map(w => w.name);
-                                if (names.length === 0) return null;
-                                const list = names.length === 1 ? names[0]
-                                    : names.length === 2 ? `${names[0]} and ${names[1]}`
-                                    : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
-                                return <p className="text-white/40 text-sm mb-5 -mt-2 fade-in">Waiting on {list} to finish voting…</p>;
-                            })()}
-
                             {/* Solo-party invite nudge */}
                             {partyLoaded && Object.keys(participants).length === 1 && (
                                 <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4 mb-5 flex items-center justify-between gap-3 fade-in">
@@ -1753,12 +1742,24 @@
                                 <div className={`rounded-2xl p-4 mb-5 border ${matches.length > 0 ? 'match-glow bg-green-500/10 border-green-500/20' : 'bg-white/5 border-white/10'}`}>
                                     <div className="flex items-center gap-2 mb-2">
                                         <SparklesIcon className={`w-4 h-4 ${matches.length > 0 ? 'text-green-400' : 'text-white/25'}`} />
-                                        <h3 className={`font-bold text-sm ${matches.length > 0 ? 'text-green-400' : 'text-white/25'}`}>{matches.length > 0 ? 'Everyone Agrees!' : 'No matches yet'}</h3>
+                                        <h3 className={`font-bold text-sm ${matches.length > 0 ? 'text-green-400' : 'text-white/25'}`}>{matches.length > 0 ? `Everyone agrees on ${matches.length} place${matches.length === 1 ? '' : 's'}!` : 'No matches yet'}</h3>
                                     </div>
-                                    <div className="overflow-y-auto" style={{ height: 84 }}>
-                                    {matches.length === 0 && (
-                                        <p className="text-white/20 text-sm pt-1.5">When everyone likes the same spot, it shows up here.</p>
-                                    )}
+                                    <div className="overflow-y-auto no-scrollbar" style={{ height: 84 }}>
+                                    {matches.length === 0 && (() => {
+                                        const all = Object.entries(participants);
+                                        const display = shortNames(all.map(([, n]) => n));
+                                        const names = all
+                                            .map(([uid], i) => ({ uid, name: display[i] }))
+                                            .filter(({ uid }) => uid !== user.uid && !activeList.every(r => allVotes[uid]?.[toVoteKey(r)] !== undefined))
+                                            .map(w => w.name);
+                                        if (allDone && names.length > 0) {
+                                            const list = names.length === 1 ? names[0]
+                                                : names.length === 2 ? `${names[0]} and ${names[1]}`
+                                                : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+                                            return <p className="text-white/30 text-sm pt-1.5">Waiting on {list} to finish voting…</p>;
+                                        }
+                                        return <p className="text-white/20 text-sm pt-1.5">When everyone likes the same spot, it shows up here.</p>;
+                                    })()}
                                     {matches.map((r, i) => {
                                         const uids = Object.keys(allVotes);
                                         const superCount = uids.filter(u => allVotes[u]?.[toVoteKey(r)] === 'super').length;

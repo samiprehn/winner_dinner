@@ -16,6 +16,7 @@ def capacitor_pods
   pod 'CapacitorFirebaseMessaging', :path => '../../node_modules/@capacitor-firebase/messaging'
   pod 'CapacitorApp', :path => '../../node_modules/@capacitor/app'
   pod 'CapacitorHaptics', :path => '../../node_modules/@capacitor/haptics'
+  pod 'CapacitorAppLauncher', :path => '../../node_modules/@capacitor/app-launcher'
 end
 
 target 'App' do
