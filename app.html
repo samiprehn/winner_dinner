@@ -562,39 +562,58 @@
                 })();
             }, [user]);
 
-            // Auto-join from invite link
-            useEffect(() => {
-                if (!user) return;
-                const params = new URLSearchParams(window.location.search);
-                const joinCode = params.get('join');
-                if (!joinCode) return;
-                // Clear the URL param
-                window.history.replaceState({}, '', window.location.pathname);
-                const code = joinCode.toUpperCase().trim();
-                (async () => {
-                    try {
-                        const snap = await database.ref(`sessions/${code}`).once('value');
-                        if (snap.exists()) {
-                            const data = snap.val();
-                            await database.ref(`users/${user.uid}/sessions/${code}`).set({
-                                name: data.name || code,
-                                joinedAt: Date.now()
-                            });
-                            const isNewMember = !(data.participants || {})[user.uid];
-                            await database.ref(`sessions/${code}/participants/${user.uid}`).set(user.displayName || 'Anonymous');
-                            if (isNewMember) sendPush(code, { event: 'join' });
-                            setSessionCode(code);
-                            setCurrentIndex(0);
-                            navDir.current = 'fwd'; setScreen('swipe');
-                        } else {
-                            setError('Session not found. The invite link may be invalid.');
-                        }
-                    } catch (err) {
-                        setError('Could not join session.');
-                        console.error(err);
+            // Pending invite code — seeded from a ?join= URL param (web), or set by
+            // an Android App Link opening the app (native)
+            const [pendingJoin, setPendingJoin] = useState(() => {
+                const p = new URLSearchParams(window.location.search).get('join');
+                if (p) window.history.replaceState({}, '', window.location.pathname);
+                return p ? p.toUpperCase().trim() : null;
+            });
+
+            const joinByCode = async (code) => {
+                try {
+                    const snap = await database.ref(`sessions/${code}`).once('value');
+                    if (snap.exists()) {
+                        const data = snap.val();
+                        await database.ref(`users/${user.uid}/sessions/${code}`).set({
+                            name: data.name || code,
+                            joinedAt: Date.now()
+                        });
+                        const isNewMember = !(data.participants || {})[user.uid];
+                        await database.ref(`sessions/${code}/participants/${user.uid}`).set(user.displayName || 'Anonymous');
+                        if (isNewMember) sendPush(code, { event: 'join' });
+                        setSessionCode(code);
+                        setCurrentIndex(0);
+                        navDir.current = 'fwd'; setScreen('swipe');
+                    } else {
+                        setError('Session not found. The invite link may be invalid.');
                     }
-                })();
-            }, [user]);
+                } catch (err) {
+                    setError('Could not join session.');
+                    console.error(err);
+                }
+            };
+
+            // App Links: an invite URL opening the native app lands here
+            useEffect(() => {
+                if (!isNativeApp()) return;
+                const App = window.Capacitor.Plugins.App;
+                const handle = (url) => {
+                    const m = (url || '').match(/[?&]join=([A-Za-z0-9]+)/i);
+                    if (m) setPendingJoin(m[1].toUpperCase());
+                };
+                const sub = App.addListener('appUrlOpen', (e) => handle(e.url));
+                App.getLaunchUrl().then((r) => r && handle(r.url)).catch(() => {});
+                return () => Promise.resolve(sub).then(h => h.remove());
+            }, []);
+
+            // Run the pending join once signed in
+            useEffect(() => {
+                if (!user || !pendingJoin) return;
+                const code = pendingJoin;
+                setPendingJoin(null);
+                joinByCode(code);
+            }, [user, pendingJoin]);
 
             // Load user's sessions list
             useEffect(() => {
