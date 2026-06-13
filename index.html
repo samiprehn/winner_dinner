@@ -93,6 +93,31 @@
             display: none;
         }
 
+        .inapp-box {
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: #fbbf24;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            display: none;
+        }
+        .inapp-box strong { color: #fcd34d; }
+        .copy-btn {
+            margin-top: 0.75rem;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 0.6rem;
+            border-radius: 0.6rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+
         .google-btn {
             width: 100%;
             background: white;
@@ -134,6 +159,7 @@
                 <h1>Winner Dinner</h1>
                 <p class="subtitle">Vote on where to eat together</p>
             </div>
+            <div class="inapp-box" id="inappBox"></div>
             <div class="error-box" id="error"></div>
             <button class="google-btn" id="signInBtn" onclick="signIn()">
                 <svg class="google-icon" viewBox="0 0 24 24">
@@ -188,6 +214,46 @@
 
         const joinParam = new URLSearchParams(window.location.search).get('join');
         const appUrl = joinParam ? 'app.html?join=' + encodeURIComponent(joinParam) : 'app.html';
+
+        // Google blocks OAuth inside embedded in-app browsers (LINE, Instagram,
+        // etc.). Detect those and tell the user to open in a real browser.
+        function detectInAppBrowser() {
+            const ua = navigator.userAgent || '';
+            if (/\bLine\//i.test(ua)) return 'LINE';
+            if (/FBAN|FBAV|FB_IAB/i.test(ua)) return 'Facebook';
+            if (/Instagram/i.test(ua)) return 'Instagram';
+            if (/Messenger/i.test(ua)) return 'Messenger';
+            if (/MicroMessenger/i.test(ua)) return 'WeChat';
+            if (/Snapchat/i.test(ua)) return 'Snapchat';
+            if (/(TikTok|musical_ly)/i.test(ua)) return 'TikTok';
+            if (/Twitter/i.test(ua)) return 'Twitter';
+            return null;
+        }
+
+        (function showInAppWarning() {
+            if (isNativeApp()) return; // never inside our own app
+            const app = detectInAppBrowser();
+            if (!app) return;
+            const box = document.getElementById('inappBox');
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const howTo = isIOS
+                ? 'tap the menu (<strong>⋯</strong> or the arrow icon) and choose <strong>“Open in Safari / default browser.”</strong>'
+                : 'tap the menu (<strong>⋮</strong>) and choose <strong>“Open in browser / Chrome.”</strong>';
+            box.innerHTML = 'You opened this inside <strong>' + app + '</strong>, and Google blocks sign-in in in-app browsers. To continue, ' + howTo +
+                '<button class="copy-btn" id="copyBtn" type="button">Copy link to paste in your browser</button>';
+            box.style.display = 'block';
+            const copyBtn = document.getElementById('copyBtn');
+            copyBtn.addEventListener('click', function () {
+                const url = window.location.href;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url)
+                        .then(function () { copyBtn.textContent = 'Copied! Open your browser & paste'; })
+                        .catch(function () { window.prompt('Copy this link:', url); });
+                } else {
+                    window.prompt('Copy this link:', url);
+                }
+            });
+        })();
 
         // If already signed in, go straight to app
         auth.onAuthStateChanged(function(user) {
