@@ -475,6 +475,10 @@
             const [sessionName, setSessionName] = useState('');
             const [userSessions, setUserSessions] = useState({});
             const [restaurants, setRestaurants] = useState([]);
+            // name (vote-key) -> formatted address, for precise map links. Only
+            // set for restaurants added from search/nearby; manual adds and old
+            // sessions have no entry and fall back to a name-only map search.
+            const [restaurantMeta, setRestaurantMeta] = useState({});
             const [currentIndex, setCurrentIndex] = useState(0);
             const [newRestaurant, setNewRestaurant] = useState('');
             const [searchLocation, setSearchLocation] = useState('');
@@ -695,6 +699,7 @@
                     }
                     if (data) {
                         setRestaurants(data.restaurants || []);
+                        setRestaurantMeta(data.restaurantMeta || {});
                         setNarrowedList(data.narrowed || null);
                         setCurrentSessionName(data.name || sessionCode);
                         const votes = data.votes || {};
@@ -942,6 +947,14 @@
 
             const toVoteKey = s => s.replace(/\./g, '%2E').replace(/#/g, '%23').replace(/\$/g, '%24').replace(/\[/g, '%5B').replace(/\]/g, '%5D').replace(/\//g, '%2F');
 
+            // Map-search query for a restaurant: include its address when we have
+            // one (search/nearby adds) so chains pin precisely; fall back to the
+            // bare name for manual adds and older sessions.
+            const mapQuery = (name) => {
+                const addr = restaurantMeta[toVoteKey(name)];
+                return addr ? `${name} ${addr}` : name;
+            };
+
             const getMatches = (restaurantList, votes, parts) => {
                 const uids = Object.keys(parts);
                 if (uids.length < 2) return [];
@@ -1036,15 +1049,22 @@
                     const data = snap.val();
                     if (!data) { setError('Session not found.'); return; }
                     const list = data.restaurants || [];
+                    const addrByName = {};
+                    searchResults.forEach(r => { if (r.address) addrByName[r.name] = r.address; });
+                    const metaUpdates = {};
                     let added = 0;
                     selectedResults.forEach(name => {
                         if (!list.includes(name)) {
                             list.push(name);
                             added++;
+                            if (addrByName[name]) metaUpdates[toVoteKey(name)] = addrByName[name];
                         }
                     });
                     if (added > 0) {
                         await database.ref(`sessions/${sessionCode}/restaurants`).set(list);
+                        if (Object.keys(metaUpdates).length > 0) {
+                            await database.ref(`sessions/${sessionCode}/restaurantMeta`).update(metaUpdates);
+                        }
                         sendPush(sessionCode, { event: 'added', count: added });
                     }
                     setSelectedResults(new Set());
@@ -1820,7 +1840,7 @@
                                             return partial.best.map(b => (
                                                 <div key={b.name} className="bg-amber-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0 flex items-center gap-1.5">
                                                     <span className="text-amber-300 text-sm font-medium">{b.name}</span>
-                                                    <MapPinLink query={b.name} size="w-3.5 h-3.5" className="text-amber-300/60 hover:text-amber-200" />
+                                                    <MapPinLink query={mapQuery(b.name)} size="w-3.5 h-3.5" className="text-amber-300/60 hover:text-amber-200" />
                                                     {b.super > 0 && (
                                                         <span className="ml-auto text-amber-400 text-xs">{'★'.repeat(b.super)}</span>
                                                     )}
@@ -1835,7 +1855,7 @@
                                         return (
                                             <div key={i} className="bg-green-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0 flex items-center gap-1.5">
                                                 <span className="text-green-300 text-sm font-medium">{r}</span>
-                                                <MapPinLink query={r} size="w-3.5 h-3.5" className="text-green-300/60 hover:text-green-200" />
+                                                <MapPinLink query={mapQuery(r)} size="w-3.5 h-3.5" className="text-green-300/60 hover:text-green-200" />
                                                 {superCount > 0 && (
                                                     <span className="ml-auto text-amber-400 text-xs">{'★'.repeat(superCount)}</span>
                                                 )}
@@ -2092,7 +2112,7 @@
                                             <p className="text-white/30 text-sm mb-2 tracking-wider uppercase">{votedCount + 1} / {activeList.length}</p>
                                             <div className="flex items-center justify-center gap-2 mb-1">
                                                 <span className="font-display text-4xl text-white">{name}</span>
-                                                <MapPinLink query={name} size="w-5 h-5" />
+                                                <MapPinLink query={mapQuery(name)} size="w-5 h-5" />
                                             </div>
                                         </div>
                                         {!withControls ? null : isTouchDevice ? (
