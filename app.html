@@ -863,7 +863,9 @@
             };
 
             const inviteFriends = async () => {
-                const url = `${window.location.origin}${window.location.pathname}?join=${sessionCode}`;
+                // Always the canonical site URL — inside the app, window.location
+                // is the WebView's internal address and 404s for recipients.
+                const url = `https://samiprehn.github.io/winner_dinner/app.html?join=${sessionCode}`;
                 const text = `Join my dinner party on Winner Dinner!\n${url}`;
                 if (navigator.share) {
                     try {
