@@ -429,6 +429,16 @@
             </svg>
         );
 
+        // The map pin doubles as the "view on map" link, shown next to a
+        // restaurant name (the name itself is no longer a link).
+        const MapPinLink = ({ query, size = 'w-4 h-4', className = '' }) => (
+            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`}
+                target="_blank" rel="noopener noreferrer" title="View on map"
+                className={`inline-flex items-center flex-shrink-0 text-white/40 hover:text-white/80 transition-colors ${className}`}>
+                <MapPinIcon className={size} />
+            </a>
+        );
+
         // *** REPLACE THIS with your Cloudflare Worker URL ***
         const PROXY_URL = 'https://winner-dinner.sami-prehn.workers.dev';
         const PUSH_URL = 'https://winner-dinner-push.sami-prehn.workers.dev';
@@ -1808,10 +1818,11 @@
                                                 return <p className="text-white/30 text-sm pt-1.5">All votes are in — nobody said yes to anything. Start over or add more restaurants.</p>;
                                             }
                                             return partial.best.map(b => (
-                                                <div key={b.name} className="bg-amber-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0">
-                                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name)}`} target="_blank" rel="noopener noreferrer" className="text-amber-300 text-sm font-medium hover:underline">{b.name}</a>
+                                                <div key={b.name} className="bg-amber-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0 flex items-center gap-1.5">
+                                                    <span className="text-amber-300 text-sm font-medium">{b.name}</span>
+                                                    <MapPinLink query={b.name} size="w-3.5 h-3.5" className="text-amber-300/60 hover:text-amber-200" />
                                                     {b.super > 0 && (
-                                                        <span className="ml-2 text-amber-400 text-xs">{'★'.repeat(b.super)}</span>
+                                                        <span className="ml-auto text-amber-400 text-xs">{'★'.repeat(b.super)}</span>
                                                     )}
                                                 </div>
                                             ));
@@ -1822,10 +1833,11 @@
                                         const uids = Object.keys(allVotes);
                                         const superCount = uids.filter(u => allVotes[u]?.[toVoteKey(r)] === 'super').length;
                                         return (
-                                            <div key={i} className="bg-green-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0">
-                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 text-sm font-medium hover:underline">{r}</a>
+                                            <div key={i} className="bg-green-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0 flex items-center gap-1.5">
+                                                <span className="text-green-300 text-sm font-medium">{r}</span>
+                                                <MapPinLink query={r} size="w-3.5 h-3.5" className="text-green-300/60 hover:text-green-200" />
                                                 {superCount > 0 && (
-                                                    <span className="ml-2 text-amber-400 text-xs">{'★'.repeat(superCount)}</span>
+                                                    <span className="ml-auto text-amber-400 text-xs">{'★'.repeat(superCount)}</span>
                                                 )}
                                             </div>
                                         );
@@ -1962,7 +1974,10 @@
                                                             </button>
                                                             )}
                                                             <div className="min-w-0 flex-1">
-                                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.name + (r.address ? ' ' + r.address : ''))}`} target="_blank" rel="noopener noreferrer" className="text-white/80 text-sm font-medium truncate block hover:underline">{r.name}</a>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-white/80 text-sm font-medium truncate">{r.name}</span>
+                                                                    <MapPinLink query={r.name + (r.address ? ' ' + r.address : '')} size="w-3.5 h-3.5" />
+                                                                </div>
                                                                 {r.address && <p className="text-white/30 text-xs truncate">{r.address}</p>}
                                                                 <div className="flex items-center gap-2 mt-0.5">
                                                                     {already && <span className="text-green-400/70 text-xs">Already added</span>}
@@ -2075,11 +2090,10 @@
                                         </div>
                                         <div className="restaurant-card-bg p-5 text-center">
                                             <p className="text-white/30 text-sm mb-2 tracking-wider uppercase">{votedCount + 1} / {activeList.length}</p>
-                                            <span className="font-display text-4xl text-white mb-1 block">{name}</span>
-                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`} target="_blank" rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 text-white/40 text-xs hover:text-white/70 transition-colors">
-                                                <MapPinIcon className="w-3.5 h-3.5" /> View on map
-                                            </a>
+                                            <div className="flex items-center justify-center gap-2 mb-1">
+                                                <span className="font-display text-4xl text-white">{name}</span>
+                                                <MapPinLink query={name} size="w-5 h-5" />
+                                            </div>
                                         </div>
                                         {!withControls ? null : isTouchDevice ? (
                                             <div className="p-4">
