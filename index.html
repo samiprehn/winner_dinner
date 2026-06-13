@@ -239,7 +239,7 @@
             const howTo = isIOS
                 ? 'tap the menu (<strong>⋯</strong> or the arrow icon) and choose <strong>“Open in Safari / default browser.”</strong>'
                 : 'tap the menu (<strong>⋮</strong>) and choose <strong>“Open in browser / Chrome.”</strong>';
-            box.innerHTML = 'You opened this inside <strong>' + app + '</strong>, and Google blocks sign-in in in-app browsers. To continue, ' + howTo +
+            box.innerHTML = 'You opened this inside <strong>' + app + '</strong>, and Google blocks sign-in using in-app browsers. To continue, ' + howTo +
                 '<button class="copy-btn" id="copyBtn" type="button">Copy link to paste in your browser</button>';
             box.style.display = 'block';
             const copyBtn = document.getElementById('copyBtn');
