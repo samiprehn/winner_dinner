@@ -925,6 +925,22 @@
                 try { localStorage.setItem('wdSwipeHintSeen', '1'); } catch (e) {}
             };
 
+            // Keep the voting card visually pinned: when content above it grows
+            // (new matches) or shrinks, compensate the scroll by the same amount.
+            // Uses offsetTop (layout position) so swipe transforms don't interfere.
+            const cardPagePosRef = React.useRef(null);
+            React.useLayoutEffect(() => {
+                const el = cardRef.current && cardRef.current.parentElement; // un-transformed stack wrapper
+                if (!el) { cardPagePosRef.current = null; return; }
+                let pageY = 0;
+                for (let n = el; n; n = n.offsetParent) pageY += n.offsetTop;
+                if (cardPagePosRef.current !== null) {
+                    const delta = pageY - cardPagePosRef.current;
+                    if (delta !== 0) window.scrollBy(0, delta);
+                }
+                cardPagePosRef.current = pageY;
+            });
+
             // Celebration auto-dismisses
             useEffect(() => {
                 if (!celebration) return;
@@ -1705,6 +1721,28 @@
                                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm fade-in">{error}</div>
                             )}
 
+                            {/* Matches */}
+                            {matches.length > 0 && (
+                                <div className="match-glow bg-green-500/10 border border-green-500/20 rounded-2xl p-4 mb-5 slide-up">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <SparklesIcon className="w-4 h-4 text-green-400" />
+                                        <h3 className="text-green-400 font-bold text-sm">Everyone Agrees!</h3>
+                                    </div>
+                                    {matches.map((r, i) => {
+                                        const uids = Object.keys(allVotes);
+                                        const superCount = uids.filter(u => allVotes[u]?.[toVoteKey(r)] === 'super').length;
+                                        return (
+                                            <div key={i} className="bg-green-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0">
+                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 text-sm font-medium hover:underline">{r}</a>
+                                                {superCount > 0 && (
+                                                    <span className="ml-2 text-amber-400 text-xs">{'★'.repeat(superCount)}</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
                             {/* Add Restaurant */}
                             <div className="mb-5 fade-in" style={{animationDelay:'0.1s'}}>
                                 <div className="bg-white/5 rounded-2xl p-4 card-glow">
@@ -2042,28 +2080,6 @@
                                     </div>
                                 );
                             })()}
-
-                            {/* Matches */}
-                            {matches.length > 0 && (
-                                <div className="match-glow bg-green-500/10 border border-green-500/20 rounded-2xl p-4 mb-5 slide-up">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <SparklesIcon className="w-4 h-4 text-green-400" />
-                                        <h3 className="text-green-400 font-bold text-sm">Everyone Agrees!</h3>
-                                    </div>
-                                    {matches.map((r, i) => {
-                                        const uids = Object.keys(allVotes);
-                                        const superCount = uids.filter(u => allVotes[u]?.[toVoteKey(r)] === 'super').length;
-                                        return (
-                                            <div key={i} className="bg-green-400/10 rounded-lg px-3 py-1.5 mb-1.5 last:mb-0">
-                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r)}`} target="_blank" rel="noopener noreferrer" className="text-green-300 text-sm font-medium hover:underline">{r}</a>
-                                                {superCount > 0 && (
-                                                    <span className="ml-2 text-amber-400 text-xs">{'★'.repeat(superCount)}</span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
 
 
                         </div>
