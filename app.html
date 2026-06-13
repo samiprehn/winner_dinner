@@ -874,6 +874,19 @@
                 pullStartRef.current = null;
             };
 
+            const [copiedParty, setCopiedParty] = useState(null);
+            const shareParty = async (code) => {
+                const url = `https://samiprehn.github.io/winner_dinner/app.html?join=${code}`;
+                const text = `Join my dinner party on Winner Dinner!\n${url}`;
+                if (navigator.share) {
+                    try { await navigator.share({ title: 'Winner Dinner', text }); } catch (e) { /* cancelled */ }
+                } else {
+                    navigator.clipboard.writeText(url);
+                    setCopiedParty(code);
+                    setTimeout(() => setCopiedParty(null), 2000);
+                }
+            };
+
             const openSession = (code) => {
                 setSessionCode(code);
                 setCurrentIndex(0);
@@ -1554,9 +1567,18 @@
                                                             <p className="text-white/30 text-sm mt-1">{shortNames(names).join(', ')}</p>
                                                         )}
                                                     </div>
-                                                    <button onClick={() => setConfirmLeave(code)} className="text-white/20 hover:text-red-400 transition-colors ml-3">
-                                                        <TrashIcon className="w-4 h-4" />
-                                                    </button>
+                                                    <div className="flex items-center gap-4 ml-3">
+                                                        {copiedParty === code ? (
+                                                            <span className="text-green-400 text-xs">Copied!</span>
+                                                        ) : (
+                                                            <button onClick={() => shareParty(code)} className="text-white/20 hover:text-white/60 transition-colors" title="Share invite link">
+                                                                <ShareIcon className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                        <button onClick={() => setConfirmLeave(code)} className="text-white/20 hover:text-red-400 transition-colors" title="Leave party">
+                                                            <TrashIcon className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
