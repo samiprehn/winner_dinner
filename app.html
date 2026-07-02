@@ -283,6 +283,29 @@
         }
         const isCancelledSignIn = (err) => err.code === 'auth/popup-closed-by-user' || /cancel/i.test(err.message || '');
 
+        // Firebase demands a recent sign-in before destructive actions like
+        // account deletion — re-prompt with whichever provider they used.
+        async function reauthenticate() {
+            const providerId = (auth.currentUser.providerData[0] || {}).providerId;
+            if (isNativeApp()) {
+                const FirebaseAuthentication = window.Capacitor.Plugins.FirebaseAuthentication;
+                let credential;
+                if (providerId === 'apple.com') {
+                    const result = await FirebaseAuthentication.signInWithApple({ skipNativeAuth: true });
+                    credential = new firebase.auth.OAuthProvider('apple.com').credential({
+                        idToken: result.credential.idToken,
+                        rawNonce: result.credential.nonce,
+                    });
+                } else {
+                    const result = await FirebaseAuthentication.signInWithGoogle();
+                    credential = firebase.auth.GoogleAuthProvider.credential(result.credential.idToken);
+                }
+                await auth.currentUser.reauthenticateWithCredential(credential);
+            } else {
+                await auth.currentUser.reauthenticateWithPopup(googleProvider);
+            }
+        }
+
         // Touch devices vote by swiping; desktop votes with buttons
         const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
@@ -493,6 +516,8 @@
             const [copied, setCopied] = useState(false);
             const [showCreate, setShowCreate] = useState(false);
             const [confirmLeave, setConfirmLeave] = useState(null);
+            const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
+            const [deletingAccount, setDeletingAccount] = useState(false);
             const [currentSessionName, setCurrentSessionName] = useState('');
             const [editingName, setEditingName] = useState(false);
             const [editNameValue, setEditNameValue] = useState('');
@@ -805,6 +830,40 @@
                 } catch (err) {
                     setError('Failed to leave session.');
                     console.error(err);
+                }
+            };
+
+            // App Store rule 5.1.1(v): account deletion must be self-serve and
+            // start inside the app. Scrubs the user from their parties (same
+            // shape as leaveSession), drops users/{uid}, then deletes the
+            // Firebase account itself.
+            const deleteAccount = async () => {
+                if (!user || deletingAccount) return;
+                setDeletingAccount(true);
+                setError('');
+                try {
+                    const uid = user.uid;
+                    const snap = await database.ref(`users/${uid}/sessions`).once('value');
+                    const updates = {};
+                    Object.keys(snap.val() || {}).forEach(code => {
+                        updates[`sessions/${code}/participants/${uid}`] = null;
+                        updates[`sessions/${code}/votes/${uid}`] = null;
+                    });
+                    updates[`users/${uid}`] = null;
+                    await database.ref().update(updates);
+                    try {
+                        await auth.currentUser.delete();
+                    } catch (err) {
+                        if (err.code === 'auth/requires-recent-login') {
+                            await reauthenticate();
+                            await auth.currentUser.delete();
+                        } else throw err;
+                    }
+                    window.location.href = 'index.html';
+                } catch (err) {
+                    setConfirmDeleteAccount(false);
+                    setDeletingAccount(false);
+                    if (!isCancelledSignIn(err)) setError('Account deletion failed: ' + (err.message || err));
                 }
             };
 
@@ -1647,6 +1706,9 @@
                                 <a href="https://buymeacoffee.com/samiprehn" target="_blank" rel="noopener noreferrer" className="hover:text-white/60 transition-colors" style={{textDecoration:'none'}}>🍽️ Keep this page running</a>
                                 <span className="mx-2 opacity-60">|</span>
                                 <a href="https://samiprehn.github.io/" target="_blank" rel="noopener noreferrer" className="hover:text-white/60 transition-colors" style={{textDecoration:'none'}}>Sami's other sites →</a>
+                                <div className="mt-3">
+                                    <button onClick={() => setConfirmDeleteAccount(true)} className="text-white/20 hover:text-red-400/60 transition-colors text-xs">Delete account</button>
+                                </div>
                             </div>
                         </div>
 
@@ -1665,6 +1727,26 @@
                                         Leave Party
                                     </button>
                                     <button onClick={() => setConfirmLeave(null)}
+                                        className="w-full bg-white/5 hover:bg-white/10 text-white/60 py-3.5 rounded-xl font-medium transition-colors">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </React.Fragment>
+                        )}
+
+                        {/* Delete-account bottom sheet */}
+                        {confirmDeleteAccount && (
+                            <React.Fragment>
+                                <div className="sheet-backdrop" onClick={() => !deletingAccount && setConfirmDeleteAccount(false)}></div>
+                                <div className="bottom-sheet">
+                                    <div className="sheet-handle"></div>
+                                    <h3 className="text-white font-semibold text-lg mb-1">Delete your account?</h3>
+                                    <p className="text-white/40 text-sm mb-5">Your name, votes, and party memberships are removed permanently. Parties you created stay available to their other members. This cannot be undone.</p>
+                                    <button onClick={() => { haptic('medium'); deleteAccount(); }} disabled={deletingAccount}
+                                        className="w-full btn-pass text-white py-3.5 rounded-xl font-semibold mb-2 disabled:opacity-50">
+                                        {deletingAccount ? 'Deleting…' : 'Delete Account'}
+                                    </button>
+                                    <button onClick={() => setConfirmDeleteAccount(false)} disabled={deletingAccount}
                                         className="w-full bg-white/5 hover:bg-white/10 text-white/60 py-3.5 rounded-xl font-medium transition-colors">
                                         Cancel
                                     </button>

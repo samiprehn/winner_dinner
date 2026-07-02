@@ -14,6 +14,7 @@ const PROJECT_ID = 'winner-dinner-3e154';
 
 const ALLOWED_ORIGINS = [
   'https://samiprehn.github.io',
+  'capacitor://samiprehn.github.io', // iOS app WebView (Android uses https scheme)
   'http://localhost',
   'http://127.0.0.1',
 ];
