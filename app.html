@@ -1200,6 +1200,35 @@
                 return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             };
 
+            const US_STATES = { AL:'Alabama', AK:'Alaska', AZ:'Arizona', AR:'Arkansas', CA:'California', CO:'Colorado', CT:'Connecticut', DE:'Delaware', FL:'Florida', GA:'Georgia', HI:'Hawaii', ID:'Idaho', IL:'Illinois', IN:'Indiana', IA:'Iowa', KS:'Kansas', KY:'Kentucky', LA:'Louisiana', ME:'Maine', MD:'Maryland', MA:'Massachusetts', MI:'Michigan', MN:'Minnesota', MS:'Mississippi', MO:'Missouri', MT:'Montana', NE:'Nebraska', NV:'Nevada', NH:'New Hampshire', NJ:'New Jersey', NM:'New Mexico', NY:'New York', NC:'North Carolina', ND:'North Dakota', OH:'Ohio', OK:'Oklahoma', OR:'Oregon', PA:'Pennsylvania', RI:'Rhode Island', SC:'South Carolina', SD:'South Dakota', TN:'Tennessee', TX:'Texas', UT:'Utah', VT:'Vermont', VA:'Virginia', WA:'Washington', WV:'West Virginia', WI:'Wisconsin', WY:'Wyoming', DC:'District of Columbia' };
+
+            // Free keyless geocoding: zips via zippopotam, city names via
+            // Open-Meteo. Returns {lat, lng} or null (best-effort — a failed
+            // lookup just means no distance column).
+            const geocodeLocation = async (locText) => {
+                try {
+                    if (/^\d{5}$/.test(locText)) {
+                        const res = await fetch(`https://api.zippopotam.us/us/${locText}`);
+                        if (!res.ok) return null;
+                        const p = (await res.json()).places?.[0];
+                        return p ? { lat: parseFloat(p.latitude), lng: parseFloat(p.longitude) } : null;
+                    }
+                    // Open-Meteo matches bare names only, so split "Portland, OR"
+                    // into the city (query) and state (to pick the right namesake).
+                    const [city, statePart] = locText.split(',').map(s => s.trim());
+                    const stateName = US_STATES[(statePart || '').toUpperCase()] || statePart || null;
+                    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=5&countryCode=US`);
+                    if (!res.ok) return null;
+                    const results = (await res.json()).results || [];
+                    const pick = stateName
+                        ? results.find(r => (r.admin1 || '').toLowerCase() === stateName.toLowerCase()) || null
+                        : results[0] || null;
+                    return pick ? { lat: pick.latitude, lng: pick.longitude } : null;
+                } catch (e) {
+                    return null;
+                }
+            };
+
             const searchRestaurants = async () => {
                 if (newRestaurant.trim().length < 2) {
                     setSearchResults([]);
@@ -1213,25 +1242,21 @@
                     const ll = userLocation ? userLocation.split(',') : null;
                     if (!locText && ll) { params.set('lat', ll[0]); params.set('lng', ll[1]); }
 
-                    // Distance origin: your GPS position normally, the zip's center
-                    // when searching by zip (free keyless lookup), and nothing for
-                    // other typed locations — "1,300 mi" from home isn't useful.
+                    // Distance origin: your GPS position normally; a typed location
+                    // is geocoded (zippopotam for zips, Open-Meteo for city names —
+                    // both free and keyless). If geocoding fails, no distance is
+                    // shown — "1,300 mi" from home isn't useful.
                     let originLat = !locText && ll ? parseFloat(ll[0]) : null;
                     let originLng = !locText && ll ? parseFloat(ll[1]) : null;
-                    if (/^\d{5}$/.test(locText)) {
-                        try {
-                            const zres = await fetch(`https://api.zippopotam.us/us/${locText}`);
-                            if (zres.ok) {
-                                const zplace = (await zres.json()).places?.[0];
-                                if (zplace) {
-                                    originLat = parseFloat(zplace.latitude);
-                                    originLng = parseFloat(zplace.longitude);
-                                    // Bias the Places search to the zip too
-                                    params.set('lat', zplace.latitude);
-                                    params.set('lng', zplace.longitude);
-                                }
-                            }
-                        } catch (e) { /* zip lookup is best-effort */ }
+                    if (locText) {
+                        const origin = await geocodeLocation(locText);
+                        if (origin) {
+                            originLat = origin.lat;
+                            originLng = origin.lng;
+                            // Bias the Places search to the typed location too
+                            params.set('lat', origin.lat);
+                            params.set('lng', origin.lng);
+                        }
                     }
 
                     const res = await placesFetch(params);
