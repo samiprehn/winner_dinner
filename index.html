@@ -218,27 +218,35 @@
             return err.code === 'auth/popup-closed-by-user' || /cancel/i.test(err.message || '');
         }
 
-        // App Store rule 4.8: an app offering Google sign-in must also offer
-        // Sign in with Apple. Only shown inside the iOS app.
-        if (isNativeApp() && window.Capacitor.getPlatform() === 'ios') {
+        // Sign in with Apple: required in the iOS app (App Store rule 4.8),
+        // offered on the website too. Hidden only in the Android app, whose
+        // WebView can't run the OAuth popup.
+        if (!isNativeApp() || window.Capacitor.getPlatform() === 'ios') {
             document.getElementById('appleBtn').style.display = 'flex';
         }
         async function appleSignIn() {
-            const FirebaseAuthentication = window.Capacitor.Plugins.FirebaseAuthentication;
-            // skipNativeAuth: the Firebase iOS SDK can't reuse the plugin's
-            // nonce, so hand the Apple credential to the web SDK ourselves.
-            const result = await FirebaseAuthentication.signInWithApple({ skipNativeAuth: true });
-            const provider = new firebase.auth.OAuthProvider('apple.com');
-            const credential = provider.credential({
-                idToken: result.credential.idToken,
-                rawNonce: result.credential.nonce,
-            });
-            await auth.signInWithCredential(credential);
-            // Apple only shares the name on the FIRST sign-in — persist it or
-            // the user is "Anonymous" forever.
-            const name = result.user && result.user.displayName;
-            if (name && auth.currentUser && !auth.currentUser.displayName) {
-                await auth.currentUser.updateProfile({ displayName: name });
+            if (isNativeApp()) {
+                const FirebaseAuthentication = window.Capacitor.Plugins.FirebaseAuthentication;
+                // skipNativeAuth: the Firebase iOS SDK can't reuse the plugin's
+                // nonce, so hand the Apple credential to the web SDK ourselves.
+                const result = await FirebaseAuthentication.signInWithApple({ skipNativeAuth: true });
+                const provider = new firebase.auth.OAuthProvider('apple.com');
+                const credential = provider.credential({
+                    idToken: result.credential.idToken,
+                    rawNonce: result.credential.nonce,
+                });
+                await auth.signInWithCredential(credential);
+                // Apple only shares the name on the FIRST sign-in — persist it
+                // or the user is "Anonymous" forever.
+                const name = result.user && result.user.displayName;
+                if (name && auth.currentUser && !auth.currentUser.displayName) {
+                    await auth.currentUser.updateProfile({ displayName: name });
+                }
+            } else {
+                const provider = new firebase.auth.OAuthProvider('apple.com');
+                provider.addScope('email');
+                provider.addScope('name');
+                await auth.signInWithPopup(provider);
             }
         }
         async function signInApple() {
