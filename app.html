@@ -1212,12 +1212,32 @@
                     const params = new URLSearchParams({ mode: 'search', query, limit: '20', radius: '32187' });
                     const ll = userLocation ? userLocation.split(',') : null;
                     if (!locText && ll) { params.set('lat', ll[0]); params.set('lng', ll[1]); }
+
+                    // Distance origin: your GPS position normally, the zip's center
+                    // when searching by zip (free keyless lookup), and nothing for
+                    // other typed locations — "1,300 mi" from home isn't useful.
+                    let originLat = !locText && ll ? parseFloat(ll[0]) : null;
+                    let originLng = !locText && ll ? parseFloat(ll[1]) : null;
+                    if (/^\d{5}$/.test(locText)) {
+                        try {
+                            const zres = await fetch(`https://api.zippopotam.us/us/${locText}`);
+                            if (zres.ok) {
+                                const zplace = (await zres.json()).places?.[0];
+                                if (zplace) {
+                                    originLat = parseFloat(zplace.latitude);
+                                    originLng = parseFloat(zplace.longitude);
+                                    // Bias the Places search to the zip too
+                                    params.set('lat', zplace.latitude);
+                                    params.set('lng', zplace.longitude);
+                                }
+                            }
+                        } catch (e) { /* zip lookup is best-effort */ }
+                    }
+
                     const res = await placesFetch(params);
                     const data = await res.json();
-                    const userLat = ll ? parseFloat(ll[0]) : null;
-                    const userLng = ll ? parseFloat(ll[1]) : null;
-                    let results = parseGoogleResults(data, userLat, userLng);
-                    if (!locText) {
+                    let results = parseGoogleResults(data, originLat, originLng);
+                    if (originLat != null) {
                         results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
                     }
                     setSearchResults(results);
