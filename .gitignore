@@ -5,3 +5,4 @@ www/
 key.json
 *firebase-adminsdk*.json
 store-assets/screenshot-*.png
+ios-signing/
