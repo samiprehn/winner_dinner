@@ -15,6 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # App Store Connect requires the iOS 26 SDK; the runner's default
+      # Xcode is older. Pick the newest Xcode 26.x on the image.
+      - name: Select Xcode 26
+        run: |
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+          xcodebuild -version
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
