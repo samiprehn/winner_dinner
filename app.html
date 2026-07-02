@@ -843,6 +843,9 @@
                 setError('');
                 try {
                     const uid = user.uid;
+                    // Read what to scrub first, but delete the auth account before
+                    // touching data: if the delete fails (requires-recent-login and
+                    // the user cancels reauth) nothing has been wiped yet.
                     const snap = await database.ref(`users/${uid}/sessions`).once('value');
                     const updates = {};
                     Object.keys(snap.val() || {}).forEach(code => {
@@ -850,7 +853,6 @@
                         updates[`sessions/${code}/votes/${uid}`] = null;
                     });
                     updates[`users/${uid}`] = null;
-                    await database.ref().update(updates);
                     try {
                         await auth.currentUser.delete();
                     } catch (err) {
@@ -858,6 +860,13 @@
                             await reauthenticate();
                             await auth.currentUser.delete();
                         } else throw err;
+                    }
+                    // Account is gone; scrub RTDB best-effort (data is orphaned,
+                    // not sensitive to keep, if this write fails).
+                    try {
+                        await database.ref().update(updates);
+                    } catch (err) {
+                        console.error('Post-delete data scrub failed:', err);
                     }
                     window.location.href = 'index.html';
                 } catch (err) {
@@ -1035,12 +1044,10 @@
                 const fresh = matched.filter(r => !known.includes(r));
                 matchOrderRef.current = prevMatchesRef.current === null ? matched.slice() : [...fresh, ...known];
                 prevMatchesRef.current = matched.slice();
-                matched.sort((a, b) => {
-                    const superA = uids.filter(u => votes[u]?.[toVoteKey(a)] === 'super').length;
-                    const superB = uids.filter(u => votes[u]?.[toVoteKey(b)] === 'super').length;
-                    return superB - superA;
-                });
-                setMatches(matchOrderRef.current);
+                // Display order: super-liked matches float to the top; sort() is
+                // stable, so ties keep the newest-first order in matchOrderRef.
+                const superCount = r => uids.filter(u => votes[u]?.[toVoteKey(r)] === 'super').length;
+                setMatches(matchOrderRef.current.slice().sort((a, b) => superCount(b) - superCount(a)));
             };
 
             // One-time swipe tutorial for touch users
@@ -1075,12 +1082,14 @@
                 setError('');
                 try {
                     const snap = await database.ref(`sessions/${sessionCode}`).once('value');
-                    const data = snap.val();
-                    if (!data) { setError('Session not found.'); return; }
-                    const list = data.restaurants || [];
-                    if (!list.includes(name)) {
-                        list.push(name);
-                        await database.ref(`sessions/${sessionCode}/restaurants`).set(list);
+                    if (!snap.exists()) { setError('Session not found.'); return; }
+                    // Transaction so concurrent adds from other participants aren't lost
+                    const result = await database.ref(`sessions/${sessionCode}/restaurants`).transaction(list => {
+                        list = list || [];
+                        if (list.includes(name)) return; // abort — already there
+                        return [...list, name];
+                    });
+                    if (result.committed) {
                         sendPush(sessionCode, { event: 'added', count: 1 });
                         if (!nameOverride) setNewRestaurant('');
                     } else {
@@ -1105,26 +1114,26 @@
                 setError('');
                 try {
                     const snap = await database.ref(`sessions/${sessionCode}`).once('value');
-                    const data = snap.val();
-                    if (!data) { setError('Session not found.'); return; }
-                    const list = data.restaurants || [];
+                    if (!snap.exists()) { setError('Session not found.'); return; }
                     const addrByName = {};
                     searchResults.forEach(r => { if (r.address) addrByName[r.name] = r.address; });
-                    const metaUpdates = {};
-                    let added = 0;
-                    selectedResults.forEach(name => {
-                        if (!list.includes(name)) {
-                            list.push(name);
-                            added++;
-                            if (addrByName[name]) metaUpdates[toVoteKey(name)] = addrByName[name];
-                        }
+                    // Transaction so concurrent adds from other participants aren't lost
+                    let addedNames = [];
+                    const result = await database.ref(`sessions/${sessionCode}/restaurants`).transaction(list => {
+                        list = list || [];
+                        addedNames = [...selectedResults].filter(name => !list.includes(name));
+                        if (addedNames.length === 0) return; // abort — nothing new
+                        return [...list, ...addedNames];
                     });
-                    if (added > 0) {
-                        await database.ref(`sessions/${sessionCode}/restaurants`).set(list);
+                    if (result.committed && addedNames.length > 0) {
+                        const metaUpdates = {};
+                        addedNames.forEach(name => {
+                            if (addrByName[name]) metaUpdates[toVoteKey(name)] = addrByName[name];
+                        });
                         if (Object.keys(metaUpdates).length > 0) {
                             await database.ref(`sessions/${sessionCode}/restaurantMeta`).update(metaUpdates);
                         }
-                        sendPush(sessionCode, { event: 'added', count: added });
+                        sendPush(sessionCode, { event: 'added', count: addedNames.length });
                     }
                     setSelectedResults(new Set());
                     setSearchResults([]);
@@ -1312,15 +1321,17 @@
                     const snap = await database.ref(`sessions/${sessionCode}`).once('value');
                     const data = snap.val();
                     if (!data) return;
-                    const list = (data.restaurants || []).filter(r => r !== restaurantName);
-                    await database.ref(`sessions/${sessionCode}/restaurants`).set(list);
+                    // Transaction so concurrent adds from other participants aren't lost
+                    const result = await database.ref(`sessions/${sessionCode}/restaurants`).transaction(cur =>
+                        (cur || []).filter(r => r !== restaurantName));
+                    const list = result.snapshot.val() || [];
 
                     // Browse mode shows the narrowed (finalist) list when one
                     // exists, so drop the restaurant there too or the row won't
                     // disappear after "Narrow It Down".
                     if (Array.isArray(data.narrowed)) {
-                        const narrowed = data.narrowed.filter(r => r !== restaurantName);
-                        await database.ref(`sessions/${sessionCode}/narrowed`).set(narrowed);
+                        await database.ref(`sessions/${sessionCode}/narrowed`).transaction(cur =>
+                            Array.isArray(cur) ? cur.filter(r => r !== restaurantName) : cur);
                     }
 
                     // Clean up votes for this restaurant from all voters
@@ -1377,15 +1388,15 @@
                     setUndoInfo({ restaurant, value: liked });
                     undoTimer.current = setTimeout(() => setUndoInfo(null), 4000);
                 }
-                // If this vote just completed a match, notify the others
-                if (liked === true || liked === 'super') {
-                    const before = getMatches(restaurants, allVotes, participants);
-                    const myVotes = { ...(allVotes[user.uid] || {}), [toVoteKey(restaurant)]: liked };
-                    const after = getMatches(restaurants, { ...allVotes, [user.uid]: myVotes }, participants);
-                    after.filter(r => !before.includes(r)).forEach(r => sendPush(sessionCode, { event: 'match', restaurant: r }));
-                }
                 try {
                     await database.ref(`sessions/${sessionCode}/votes/${user.uid}`).update({ [toVoteKey(restaurant)]: liked });
+                    // Vote persisted — if it just completed a match, notify the others
+                    if (liked === true || liked === 'super') {
+                        const before = getMatches(restaurants, allVotes, participants);
+                        const myVotes = { ...(allVotes[user.uid] || {}), [toVoteKey(restaurant)]: liked };
+                        const after = getMatches(restaurants, { ...allVotes, [user.uid]: myVotes }, participants);
+                        after.filter(r => !before.includes(r)).forEach(r => sendPush(sessionCode, { event: 'match', restaurant: r }));
+                    }
                 } catch (err) {
                     console.error('Vote save error:', err);
                     setError('Failed to save vote.');
@@ -2331,12 +2342,16 @@
         ReactDOM.render(<WinnerDinner />, document.getElementById('root'));
 
         // Auto-update notice (web only): GitHub Pages changes this file's ETag on
-        // every deploy. We baseline the ETag at load, then re-check on focus and
-        // periodically; if it changes, a new version is live — show a refresh
-        // banner. No version param in the URL, nothing to bump by hand. The
+        // every deploy. The baseline is the last ETag this browser saw (kept in
+        // localStorage), not a fresh network fetch — a fresh fetch would return
+        // the *new* version's tag even when a stale cached page is running, so
+        // the banner would never show. Re-check on focus and periodically; if
+        // the tag differs, a new version is live — show a refresh banner. The
         // native app loads from its local bundle, so it's skipped there.
         if (!isNativeApp()) {
-            let baselineTag = null;
+            const TAG_KEY = 'wdAppTag';
+            let baselineTag = localStorage.getItem(TAG_KEY);
+            let latestTag = null;
             let bannerShown = false;
             const showUpdateBanner = () => {
                 if (bannerShown) return;
@@ -2347,7 +2362,7 @@
                 const btn = document.createElement('button');
                 btn.textContent = 'Refresh';
                 btn.style.cssText = 'background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 16px;font:600 14px inherit;cursor:pointer';
-                btn.onclick = () => location.reload();
+                btn.onclick = () => { localStorage.setItem(TAG_KEY, latestTag); location.reload(); };
                 bar.appendChild(btn);
                 document.body.appendChild(bar);
             };
@@ -2356,8 +2371,11 @@
                     const res = await fetch('app.html', { method: 'HEAD', cache: 'no-store' });
                     const tag = res.headers.get('etag') || res.headers.get('last-modified');
                     if (!tag) return;
-                    if (baselineTag === null) baselineTag = tag;       // version running now
-                    else if (tag !== baselineTag) showUpdateBanner();   // newer one deployed
+                    latestTag = tag;
+                    if (baselineTag === null) {                         // first visit ever
+                        baselineTag = tag;
+                        localStorage.setItem(TAG_KEY, tag);
+                    } else if (tag !== baselineTag) showUpdateBanner(); // newer one deployed
                 } catch (e) { /* offline — ignore */ }
             };
             checkForUpdate();

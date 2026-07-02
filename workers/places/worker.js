@@ -15,13 +15,15 @@ const PROJECT_ID = 'winner-dinner-3e154';
 const ALLOWED_ORIGINS = [
   'https://samiprehn.github.io',
   'capacitor://samiprehn.github.io', // iOS app WebView (Android uses https scheme)
-  'http://localhost',
-  'http://127.0.0.1',
 ];
+
+// Local dev on any port — exact host match, unlike startsWith which would
+// also allow e.g. https://samiprehn.github.io.evil.com
+const LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 function getCorsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
-  const isAllowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+  const isAllowed = ALLOWED_ORIGINS.includes(origin) || LOCALHOST_ORIGIN.test(origin);
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : ALLOWED_ORIGINS[0],
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
