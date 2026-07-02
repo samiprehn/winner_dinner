@@ -1459,13 +1459,30 @@
                 return () => el.removeEventListener('touchmove', onTouchMove);
             }, [dragState]);
 
-            // Swipe-to-vote: right = yes, left = no, up = super like.
+            // Swipe-to-vote: right = yes, left = no. Super Like is a button —
+            // it used to be swipe-up, but people triggered it accidentally.
             // Touch-only by design — desktop stays click-driven.
             const getSwipeCandidate = (dx, dy) =>
-                dy < -80 && Math.abs(dy) > Math.abs(dx) ? 'super'
-                : dx > 90 ? 'yes'
-                : dx < -90 ? 'no'
+                dx > 90 && Math.abs(dx) > Math.abs(dy) ? 'yes'
+                : dx < -90 && Math.abs(dx) > Math.abs(dy) ? 'no'
                 : null;
+
+            // Button-triggered super like reuses the swipe fly-away animation
+            const superVote = () => {
+                if (flyingRef.current) return;
+                const restaurant = currentRestaurant();
+                if (!restaurant) return;
+                flyingRef.current = true;
+                setFlying('super');
+                setTimeout(() => {
+                    castVote(restaurant, 'super');
+                    flyingRef.current = false;
+                    setSnapBack(true);
+                    setFlying(null);
+                    resetSwipe();
+                    setTimeout(() => setSnapBack(false), 60);
+                }, 280);
+            };
 
             const handleTouchStart = (e) => {
                 if (flyingRef.current) return;
@@ -2202,12 +2219,16 @@
                                             <div className="p-4">
                                                 <div className="flex items-center justify-center gap-6 text-sm font-medium mb-3">
                                                     <span className="text-red-400/80">← No</span>
-                                                    <span className="text-amber-400/80">↑ Super Like</span>
                                                     <span className="text-green-400/80">Yes →</span>
                                                 </div>
-                                                <button onClick={skip} className="w-full btn-skip text-white/80 py-3 rounded-2xl text-sm font-semibold">
-                                                    Skip for now
-                                                </button>
+                                                <div className="flex gap-3">
+                                                    <button onClick={superVote} className="flex-1 btn-super text-white py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-1.5">
+                                                        <span style={{color:'#ffd700'}}>★</span> Super Like
+                                                    </button>
+                                                    <button onClick={skip} className="flex-1 btn-skip text-white/80 py-3 rounded-2xl text-sm font-semibold">
+                                                        Skip for now
+                                                    </button>
+                                                </div>
                                             </div>
                                         ) : (
                                             <div className="p-4">
@@ -2224,7 +2245,7 @@
                                                 </div>
                                                 <button onClick={() => vote('super')}
                                                     className="w-full btn-super text-white py-3 rounded-2xl flex items-center justify-center gap-2 text-base font-semibold">
-                                                    ★ Super Like
+                                                    <span style={{color:'#ffd700'}}>★</span> Super Like
                                                 </button>
                                             </div>
                                         )}
@@ -2284,7 +2305,7 @@
                                     <div className="space-y-5 text-left inline-block">
                                         <p className="text-green-400 text-xl font-semibold">Swipe right → <span className="text-white/80 text-base font-normal ml-2">Yes, I'd eat there</span></p>
                                         <p className="text-red-400 text-xl font-semibold">← Swipe left <span className="text-white/80 text-base font-normal ml-2">No thanks</span></p>
-                                        <p className="text-amber-400 text-xl font-semibold">↑ Swipe up <span className="text-white/80 text-base font-normal ml-2">★ Super Like</span></p>
+                                        <p className="text-amber-400 text-xl font-semibold"><span style={{color:'#ffd700'}}>★</span> Super Like <span className="text-white/80 text-base font-normal ml-2">Tap the button</span></p>
                                     </div>
                                     <p className="text-white/60 text-sm mt-8">Can't decide? Tap "Skip for now" under the card.<br/>Mis-swiped? You get 4 seconds to undo.</p>
                                     <button onClick={dismissSwipeHint} className="btn-primary text-white px-10 py-3 rounded-xl font-semibold mt-8">Got it</button>
