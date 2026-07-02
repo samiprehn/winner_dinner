@@ -2236,17 +2236,18 @@
                                                     <button onClick={() => vote(false)} className="flex-1 btn-pass text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
                                                         <XIcon className="w-7 h-7" /> No
                                                     </button>
-                                                    <button onClick={skip} className="flex-1 btn-skip text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
-                                                        Skip
-                                                    </button>
                                                     <button onClick={() => vote(true)} className="flex-1 btn-like text-white py-5 rounded-2xl flex items-center justify-center gap-2 text-lg font-semibold">
                                                         <HeartIcon className="w-7 h-7" /> Yes
                                                     </button>
                                                 </div>
-                                                <button onClick={() => vote('super')}
-                                                    className="w-full btn-super text-white py-3 rounded-2xl flex items-center justify-center gap-2 text-base font-semibold">
-                                                    <span style={{color:'#ffd700'}}>★</span> Super Like
-                                                </button>
+                                                <div className="flex gap-3">
+                                                    <button onClick={skip} className="flex-1 btn-skip text-white/80 py-3 rounded-2xl text-lg font-semibold">
+                                                        Skip for now
+                                                    </button>
+                                                    <button onClick={() => vote('super')} className="flex-1 btn-super text-white py-3 rounded-2xl text-lg font-semibold flex items-center justify-center gap-1.5">
+                                                        <span style={{color:'#ffd700'}}>★</span> Super Like
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
                                     </React.Fragment>
