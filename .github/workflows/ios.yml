@@ -56,18 +56,15 @@ jobs:
           echo "$PROFILE_BASE64" | base64 -d > \
             ~/Library/MobileDevice/Provisioning\ Profiles/winner-dinner.mobileprovision
 
+      # Signing identity/profile live in the App target's Release build
+      # settings (pbxproj) — passing them on the CLI would force them onto
+      # the Pods targets too, which refuse provisioning profiles.
       - name: Build and archive (signed)
         if: env.HAS_SIGNING == 'true'
-        env:
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace \
             -scheme App -configuration Release -sdk iphoneos \
             -archivePath $RUNNER_TEMP/App.xcarchive \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="Winner Dinner App Store" \
             CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER \
             MARKETING_VERSION=1.0.$GITHUB_RUN_NUMBER \
             archive
