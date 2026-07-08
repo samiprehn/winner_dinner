@@ -1015,11 +1015,19 @@
 
             const toVoteKey = s => s.replace(/\./g, '%2E').replace(/#/g, '%23').replace(/\$/g, '%24').replace(/\[/g, '%5B').replace(/\]/g, '%5D').replace(/\//g, '%2F');
 
+            // Meta values are objects ({address, cuisine, price, distance}) for
+            // new adds, plain address strings in older sessions.
+            const getMeta = (name) => {
+                const m = restaurantMeta[toVoteKey(name)];
+                if (!m) return {};
+                return typeof m === 'string' ? { address: m } : m;
+            };
+
             // Map-search query for a restaurant: include its address when we have
             // one (search/nearby adds) so chains pin precisely; fall back to the
             // bare name for manual adds and older sessions.
             const mapQuery = (name) => {
-                const addr = restaurantMeta[toVoteKey(name)];
+                const addr = getMeta(name).address;
                 return addr ? `${name} ${addr}` : name;
             };
 
@@ -1115,8 +1123,8 @@
                 try {
                     const snap = await database.ref(`sessions/${sessionCode}`).once('value');
                     if (!snap.exists()) { setError('Session not found.'); return; }
-                    const addrByName = {};
-                    searchResults.forEach(r => { if (r.address) addrByName[r.name] = r.address; });
+                    const infoByName = {};
+                    searchResults.forEach(r => { infoByName[r.name] = r; });
                     // Transaction so concurrent adds from other participants aren't lost
                     let addedNames = [];
                     const result = await database.ref(`sessions/${sessionCode}/restaurants`).transaction(list => {
@@ -1128,7 +1136,17 @@
                     if (result.committed && addedNames.length > 0) {
                         const metaUpdates = {};
                         addedNames.forEach(name => {
-                            if (addrByName[name]) metaUpdates[toVoteKey(name)] = addrByName[name];
+                            const r = infoByName[name];
+                            if (r) {
+                                // Object meta (address/cuisine/price/distance); older
+                                // sessions have plain address strings — readers handle both.
+                                const m = {};
+                                if (r.address) m.address = r.address;
+                                if (r.category) m.cuisine = r.category;
+                                if (r.price) m.price = r.price;
+                                if (r.distance != null) m.distance = Math.round(r.distance * 10) / 10;
+                                if (Object.keys(m).length > 0) metaUpdates[toVoteKey(name)] = m;
+                            }
                         });
                         if (Object.keys(metaUpdates).length > 0) {
                             await database.ref(`sessions/${sessionCode}/restaurantMeta`).update(metaUpdates);
@@ -1172,10 +1190,12 @@
                     if (lat && lng && userLat && userLng) {
                         distance = getDistanceMiles(userLat, userLng, lat, lng);
                     }
+                    const priceMap = { PRICE_LEVEL_INEXPENSIVE: '$', PRICE_LEVEL_MODERATE: '$$', PRICE_LEVEL_EXPENSIVE: '$$$', PRICE_LEVEL_VERY_EXPENSIVE: '$$$$' };
                     return {
                         name: p.displayName?.text || '',
                         address: p.formattedAddress || '',
                         category: p.primaryTypeDisplayName?.text || '',
+                        price: priceMap[p.priceLevel] || '',
                         distance
                     };
                 }).filter(r => r.name);
@@ -1187,6 +1207,35 @@
                 const dLon = (lon2 - lon1) * Math.PI / 180;
                 const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
                 return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            };
+
+            const US_STATES = { AL:'Alabama', AK:'Alaska', AZ:'Arizona', AR:'Arkansas', CA:'California', CO:'Colorado', CT:'Connecticut', DE:'Delaware', FL:'Florida', GA:'Georgia', HI:'Hawaii', ID:'Idaho', IL:'Illinois', IN:'Indiana', IA:'Iowa', KS:'Kansas', KY:'Kentucky', LA:'Louisiana', ME:'Maine', MD:'Maryland', MA:'Massachusetts', MI:'Michigan', MN:'Minnesota', MS:'Mississippi', MO:'Missouri', MT:'Montana', NE:'Nebraska', NV:'Nevada', NH:'New Hampshire', NJ:'New Jersey', NM:'New Mexico', NY:'New York', NC:'North Carolina', ND:'North Dakota', OH:'Ohio', OK:'Oklahoma', OR:'Oregon', PA:'Pennsylvania', RI:'Rhode Island', SC:'South Carolina', SD:'South Dakota', TN:'Tennessee', TX:'Texas', UT:'Utah', VT:'Vermont', VA:'Virginia', WA:'Washington', WV:'West Virginia', WI:'Wisconsin', WY:'Wyoming', DC:'District of Columbia' };
+
+            // Free keyless geocoding: zips via zippopotam, city names via
+            // Open-Meteo. Returns {lat, lng} or null (best-effort — a failed
+            // lookup just means no distance column).
+            const geocodeLocation = async (locText) => {
+                try {
+                    if (/^\d{5}$/.test(locText)) {
+                        const res = await fetch(`https://api.zippopotam.us/us/${locText}`);
+                        if (!res.ok) return null;
+                        const p = (await res.json()).places?.[0];
+                        return p ? { lat: parseFloat(p.latitude), lng: parseFloat(p.longitude) } : null;
+                    }
+                    // Open-Meteo matches bare names only, so split "Portland, OR"
+                    // into the city (query) and state (to pick the right namesake).
+                    const [city, statePart] = locText.split(',').map(s => s.trim());
+                    const stateName = US_STATES[(statePart || '').toUpperCase()] || statePart || null;
+                    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=5&countryCode=US`);
+                    if (!res.ok) return null;
+                    const results = (await res.json()).results || [];
+                    const pick = stateName
+                        ? results.find(r => (r.admin1 || '').toLowerCase() === stateName.toLowerCase()) || null
+                        : results[0] || null;
+                    return pick ? { lat: pick.latitude, lng: pick.longitude } : null;
+                } catch (e) {
+                    return null;
+                }
             };
 
             const searchRestaurants = async () => {
@@ -1201,12 +1250,28 @@
                     const params = new URLSearchParams({ mode: 'search', query, limit: '20', radius: '32187' });
                     const ll = userLocation ? userLocation.split(',') : null;
                     if (!locText && ll) { params.set('lat', ll[0]); params.set('lng', ll[1]); }
+
+                    // Distance origin: your GPS position normally; a typed location
+                    // is geocoded (zippopotam for zips, Open-Meteo for city names —
+                    // both free and keyless). If geocoding fails, no distance is
+                    // shown — "1,300 mi" from home isn't useful.
+                    let originLat = !locText && ll ? parseFloat(ll[0]) : null;
+                    let originLng = !locText && ll ? parseFloat(ll[1]) : null;
+                    if (locText) {
+                        const origin = await geocodeLocation(locText);
+                        if (origin) {
+                            originLat = origin.lat;
+                            originLng = origin.lng;
+                            // Bias the Places search to the typed location too
+                            params.set('lat', origin.lat);
+                            params.set('lng', origin.lng);
+                        }
+                    }
+
                     const res = await placesFetch(params);
                     const data = await res.json();
-                    const userLat = ll ? parseFloat(ll[0]) : null;
-                    const userLng = ll ? parseFloat(ll[1]) : null;
-                    let results = parseGoogleResults(data, userLat, userLng);
-                    if (!locText) {
+                    let results = parseGoogleResults(data, originLat, originLng);
+                    if (originLat != null) {
                         results.sort((a, b) => (a.distance || 999) - (b.distance || 999));
                     }
                     setSearchResults(results);
@@ -2112,6 +2177,7 @@
                                                                 <div className="flex items-center gap-2 mt-0.5">
                                                                     {already && <span className="text-green-400/70 text-xs">Already added</span>}
                                                                     {!already && r.category && <span className="text-white/20 text-xs">{r.category}</span>}
+                                                                    {!already && r.price && <span className="text-white/20 text-xs">· {r.price}</span>}
                                                                     {!already && r.distance != null && <span className="text-white/20 text-xs">· {r.distance.toFixed(1)} mi</span>}
                                                                 </div>
                                                             </div>
@@ -2179,9 +2245,18 @@
                                             return (
                                                 <div key={i} className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5">
                                                     <span className="text-white/30 text-sm w-5 text-right flex-shrink-0">{i + 1}</span>
-                                                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                                                        <span className="text-white/80 text-sm font-medium truncate">{r}</span>
-                                                        <MapPinLink query={mapQuery(r)} size="w-3.5 h-3.5" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-white/80 text-sm font-medium truncate">{r}</span>
+                                                            <MapPinLink query={mapQuery(r)} size="w-3.5 h-3.5" />
+                                                        </div>
+                                                        {(() => {
+                                                            const m = getMeta(r);
+                                                            const bits = [m.cuisine, m.price, m.distance != null ? `${m.distance} mi` : null].filter(Boolean);
+                                                            return bits.length > 0 ? (
+                                                                <p className="text-white/30 text-xs truncate">{bits.join(' · ')}</p>
+                                                            ) : null;
+                                                        })()}
                                                     </div>
                                                     {myVote === 'super' && <span className="text-amber-400 text-xs">★</span>}
                                                     {myVote === true && <span className="text-green-400 text-xs">✓</span>}
@@ -2225,6 +2300,13 @@
                                                 <span className="font-display text-4xl text-white">{name}</span>
                                                 <MapPinLink query={mapQuery(name)} size="w-5 h-5" />
                                             </div>
+                                            {(() => {
+                                                const m = getMeta(name);
+                                                const bits = [m.cuisine, m.price, m.distance != null ? `${m.distance} mi` : null].filter(Boolean);
+                                                return bits.length > 0 ? (
+                                                    <p className="text-white/40 text-sm mt-1">{bits.join(' · ')}</p>
+                                                ) : null;
+                                            })()}
                                         </div>
                                         {!withControls ? null : isTouchDevice ? (
                                             <div className="p-4">

@@ -66,9 +66,10 @@ async function verifyIdToken(idToken) {
   return payload.sub;
 }
 
-// Only request basic fields to stay on cheapest pricing tier
+// Only request Pro-tier fields — adding e.g. places.rating would re-bill
+// every call at the Enterprise tier (1,000 free/month instead of 5,000).
 const FIELD_MASK =
-'places.displayName,places.formattedAddress,places.primaryTypeDisplayName,places.location';
+'places.displayName,places.formattedAddress,places.primaryTypeDisplayName,places.location,places.priceLevel';
 
 export default {
   async fetch(request, env, ctx) {
