@@ -39,6 +39,9 @@
         body {
             background: #0f0f0f;
             min-height: 100vh;
+            /* iOS app uses viewport-fit=cover, so keep content out from
+               under the status bar / Dynamic Island (0 everywhere else) */
+            padding-top: env(safe-area-inset-top);
         }
         
         .bg-grain {
