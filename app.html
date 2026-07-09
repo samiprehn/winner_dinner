@@ -745,7 +745,7 @@
                     await googleSignIn();
                 } catch (err) {
                     if (!isCancelledSignIn(err)) {
-                        setError('Sign in failed. Please try again.');
+                        setError('Sign in failed: ' + (err.code || '') + ' ' + (err.message || err));
                     }
                 } finally {
                     setLoading(false);
@@ -1800,7 +1800,7 @@
                                 <span className="mx-2 opacity-60">|</span>
                                 <a href="https://samiprehn.github.io/" target="_blank" rel="noopener noreferrer" className="hover:text-white/60 transition-colors" style={{textDecoration:'none'}}>Sami's other sites →</a>
                                 <div className="mt-3">
-                                    <button onClick={() => setConfirmDeleteAccount(true)} className="text-white/20 hover:text-red-400/60 transition-colors text-xs">Delete account</button>
+                                    <button onClick={() => setConfirmDeleteAccount(true)} className="text-white/40 hover:text-red-400/70 transition-colors text-sm">Delete account</button>
                                 </div>
                             </div>
                         </div>
