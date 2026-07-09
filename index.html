@@ -215,7 +215,10 @@
             }
         }
         function isCancelledSignIn(err) {
-            return err.code === 'auth/popup-closed-by-user' || /cancel/i.test(err.message || '');
+            return err.code === 'auth/popup-closed-by-user' || /cancel/i.test(err.message || '')
+                // Backing out of the native Apple sign-in sheet surfaces as
+                // ASAuthorizationError.canceled (error 1001), no "cancel" in the text.
+                || /AuthorizationError error 1001/i.test(err.message || '');
         }
 
         // Sign in with Apple: required in the iOS app (App Store rule 4.8),
