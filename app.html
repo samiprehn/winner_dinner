@@ -43,6 +43,12 @@
                under the status bar / Dynamic Island (0 everywhere else) */
             padding-top: env(safe-area-inset-top);
         }
+        /* Full-height screens must shrink by that same top inset, or every
+           page overflows by exactly the inset and becomes scrollable.
+           !important because the Tailwind CDN injects its styles after this. */
+        .min-h-screen {
+            min-height: calc(100vh - env(safe-area-inset-top)) !important;
+        }
         
         .bg-grain {
             position: fixed;
