@@ -42,6 +42,8 @@
             /* iOS app uses viewport-fit=cover, so keep content out from
                under the status bar / Dynamic Island (0 everywhere else) */
             padding-top: env(safe-area-inset-top);
+            /* --banner-h is set by the AdMob code when a banner is showing */
+            padding-bottom: var(--banner-h, 0px);
         }
         /* Full-height screens must shrink by that same top inset, or every
            page overflows by exactly the inset and becomes scrollable.
@@ -194,7 +196,7 @@
             position: fixed; left: 0; right: 0; bottom: 0; z-index: 95;
             background: #1c1c1e;
             border-radius: 24px 24px 0 0;
-            padding: 12px 20px calc(28px + env(safe-area-inset-bottom));
+            padding: 12px 20px calc(28px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
             box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
             animation: sheetUp 0.28s cubic-bezier(0.25, 0.8, 0.35, 1) both;
         }
@@ -233,7 +235,7 @@
         /* Undo toast */
         .undo-toast {
             position: fixed;
-            bottom: calc(24px + env(safe-area-inset-bottom));
+            bottom: calc(24px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
             left: 50%;
             transform: translateX(-50%);
             z-index: 80;
@@ -366,6 +368,39 @@
                     window.Capacitor.Plugins.AppLauncher.openUrl({ url: a.href });
                 }
             });
+        }
+
+        // AdMob banner (native app only — the website keeps AdSense).
+        // Google's TEST ad unit IDs until Sami's AdMob account exists; swap
+        // together with the App IDs in Info.plist / AndroidManifest.xml.
+        if (isNativeApp() && window.Capacitor.Plugins.AdMob) {
+            (async () => {
+                try {
+                    const AdMob = window.Capacitor.Plugins.AdMob;
+                    await AdMob.initialize();
+                    // GDPR consent form, shown only where Google says it's required
+                    try {
+                        const consent = await AdMob.requestConsentInfo();
+                        if (consent.isConsentFormAvailable && consent.status === 'REQUIRED') {
+                            await AdMob.showConsentForm();
+                        }
+                    } catch (e) { /* no consent message configured yet — fine */ }
+                    // Reserve layout space for the banner: the plugin reports px
+                    // on Android but CSS-px (points) on iOS.
+                    AdMob.addListener('bannerAdSizeChanged', ({ height }) => {
+                        const h = window.Capacitor.getPlatform() === 'android'
+                            ? height / (window.devicePixelRatio || 1) : height;
+                        document.documentElement.style.setProperty('--banner-h', h + 'px');
+                    });
+                    await AdMob.showBanner({
+                        adId: window.Capacitor.getPlatform() === 'ios'
+                            ? 'ca-app-pub-3940256099942544/2934735716'
+                            : 'ca-app-pub-3940256099942544/6300978111',
+                        adSize: 'ADAPTIVE_BANNER',
+                        position: 'BOTTOM_CENTER',
+                    });
+                } catch (e) { /* ads must never break the app */ }
+            })();
         }
 
         // Icons
