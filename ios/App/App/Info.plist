@@ -32,8 +32,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>GADApplicationIdentifier</key>
-	<!-- Google's sample App ID until Sami's AdMob account exists; swap before merging to main -->
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-8254595620906412~9713166033</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

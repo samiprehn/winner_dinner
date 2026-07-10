@@ -371,8 +371,7 @@
         }
 
         // AdMob banner (native app only — the website keeps AdSense).
-        // Google's TEST ad unit IDs until Sami's AdMob account exists; swap
-        // together with the App IDs in Info.plist / AndroidManifest.xml.
+        // App IDs live in Info.plist / AndroidManifest.xml.
         if (isNativeApp() && window.Capacitor.Plugins.AdMob) {
             (async () => {
                 try {
@@ -394,8 +393,8 @@
                     });
                     await AdMob.showBanner({
                         adId: window.Capacitor.getPlatform() === 'ios'
-                            ? 'ca-app-pub-3940256099942544/2934735716'
-                            : 'ca-app-pub-3940256099942544/6300978111',
+                            ? 'ca-app-pub-8254595620906412/1931677694'
+                            : 'ca-app-pub-8254595620906412/6213703481',
                         adSize: 'ADAPTIVE_BANNER',
                         position: 'BOTTOM_CENTER',
                     });

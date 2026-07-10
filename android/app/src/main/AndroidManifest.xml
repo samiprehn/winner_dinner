@@ -34,10 +34,9 @@
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Google's sample AdMob App ID until Sami's account exists; swap before merging to main -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-8254595620906412~9769006356" />
     </application>
 
     <!-- Permissions -->
