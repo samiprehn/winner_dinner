@@ -176,6 +176,15 @@
                 </svg>
                 Continue with Apple
             </button>
+            <div id="storeLinks" style="display:none;text-align:center;margin-top:2rem;">
+                <a href="https://apps.apple.com/us/app/winner-dinner/id6786539917" target="_blank" rel="noopener noreferrer"
+                   style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.6rem 1.1rem;border:1px solid rgba(255,255,255,0.15);border-radius:9999px;color:rgba(255,255,255,0.7);font-size:0.875rem;text-decoration:none;transition:border-color 0.2s,color 0.2s;"
+                   onmouseover="this.style.color='#fff';this.style.borderColor='rgba(255,255,255,0.4)'"
+                   onmouseout="this.style.color='rgba(255,255,255,0.7)';this.style.borderColor='rgba(255,255,255,0.15)'">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.45z"/></svg>
+                    Get the iPhone app
+                </a>
+            </div>
             <div style="text-align:center;margin-top:2rem;color:rgba(255,255,255,0.3);font-size:0.875rem;">
                 <a href="https://buymeacoffee.com/samiprehn" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='inherit'">🍽️ Keep this page running</a>
                 <span style="margin:0 0.5rem;opacity:0.6;">|</span>
@@ -226,6 +235,11 @@
         // WebView can't run the OAuth popup.
         if (!isNativeApp() || window.Capacitor.getPlatform() === 'ios') {
             document.getElementById('appleBtn').style.display = 'flex';
+        }
+        // Store badge (iOS only so far — add Play link once that listing is live).
+        // Never inside our own app.
+        if (!isNativeApp()) {
+            document.getElementById('storeLinks').style.display = 'block';
         }
         async function appleSignIn() {
             if (isNativeApp()) {
@@ -298,7 +312,12 @@
             const howTo = isIOS
                 ? 'tap the menu (<strong>⋯</strong> or the arrow icon) and choose <strong>“Open in Safari / default browser.”</strong>'
                 : 'tap the menu (<strong>⋮</strong>) and choose <strong>“Open in browser / Chrome.”</strong>';
-            box.innerHTML = 'You opened this inside <strong>' + app + '</strong>, and Google blocks sign-in using in-app browsers. To continue, ' + howTo +
+            // App Store links escape in-app browsers, so on iOS offer the app
+            // as the one-tap way out.
+            const appOut = isIOS
+                ? ' Or <a href="https://apps.apple.com/us/app/winner-dinner/id6786539917" style="color:inherit;font-weight:600;">get the iPhone app</a>.'
+                : '';
+            box.innerHTML = 'You opened this inside <strong>' + app + '</strong>, and Google blocks sign-in using in-app browsers. To continue, ' + howTo + appOut +
                 '<button class="copy-btn" id="copyBtn" type="button">Copy link to paste in your browser</button>';
             box.style.display = 'block';
             const copyBtn = document.getElementById('copyBtn');
