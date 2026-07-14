@@ -148,6 +148,18 @@
             width: 1.25rem;
             height: 1.25rem;
         }
+
+        /* Hidden until Firebase resolves the saved session, so returning
+           users redirect to the app without a flash of the login buttons. */
+        .auth-area {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .auth-area.ready {
+            opacity: 1;
+            pointer-events: auto;
+        }
     </style>
 </head>
 <body>
@@ -161,6 +173,7 @@
             </div>
             <div class="inapp-box" id="inappBox"></div>
             <div class="error-box" id="error"></div>
+            <div class="auth-area" id="authArea">
             <button class="google-btn" id="signInBtn" onclick="signIn()">
                 <svg class="google-icon" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -176,6 +189,7 @@
                 </svg>
                 Continue with Apple
             </button>
+            </div>
             <div id="storeLinks" style="display:none;text-align:center;margin-top:2rem;">
                 <a href="https://apps.apple.com/us/app/winner-dinner/id6786539917" target="_blank" rel="noopener noreferrer"
                    style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.6rem 1.1rem;border:1px solid rgba(255,255,255,0.15);border-radius:9999px;color:rgba(255,255,255,0.7);font-size:0.875rem;text-decoration:none;transition:border-color 0.2s,color 0.2s;"
@@ -333,10 +347,13 @@
             });
         })();
 
-        // If already signed in, go straight to app
+        // If already signed in, go straight to app; only reveal the sign-in
+        // buttons once we know there's no saved session.
         auth.onAuthStateChanged(function(user) {
             if (user) {
                 window.location.href = appUrl;
+            } else {
+                document.getElementById('authArea').classList.add('ready');
             }
         });
 
