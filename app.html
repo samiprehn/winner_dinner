@@ -525,6 +525,12 @@
             const [copied, setCopied] = useState(false);
             const [showCreate, setShowCreate] = useState(false);
             const [confirmLeave, setConfirmLeave] = useState(null);
+            // Apple sign-in often shares no name (only on the very first
+            // authorization, and the user can decline) — ask for one instead
+            // of listing them as "Anonymous" in every dinner party.
+            const [nameInput, setNameInput] = useState('');
+            const [savedName, setSavedName] = useState('');
+            const [savingName, setSavingName] = useState(false);
             const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
             const [deletingAccount, setDeletingAccount] = useState(false);
             const [currentSessionName, setCurrentSessionName] = useState('');
@@ -765,6 +771,28 @@
                 await auth.signOut();
                 setScreen('sessions');
                 setSessionCode('');
+            };
+
+            const saveDisplayName = async () => {
+                const name = nameInput.trim();
+                if (!name || savingName) return;
+                setSavingName(true);
+                setError('');
+                try {
+                    await auth.currentUser.updateProfile({ displayName: name });
+                    // Rename their existing "Anonymous" entries in every party
+                    // they've already joined.
+                    const snap = await database.ref(`users/${user.uid}/sessions`).once('value');
+                    const codes = Object.keys(snap.val() || {});
+                    await Promise.all(codes.map(code =>
+                        database.ref(`sessions/${code}/participants/${user.uid}`).set(name)
+                    ));
+                    setSavedName(name);
+                } catch (err) {
+                    setError('Could not save your name: ' + (err.message || err));
+                } finally {
+                    setSavingName(false);
+                }
             };
 
             const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -1655,6 +1683,38 @@
                 const joinParam = new URLSearchParams(window.location.search).get('join');
                 window.location.href = joinParam ? 'index.html?join=' + encodeURIComponent(joinParam) : 'index.html';
                 return null;
+            }
+
+            // --- SIGNED IN BUT NO NAME (Apple sign-in): ask before anything else ---
+            if (!user.displayName && !savedName) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
+                        <div className="max-w-md w-full fade-in">
+                            <img src="windin_logo.png" className="w-24 h-24 mx-auto mb-4" alt="Winner Dinner" />
+                            <div className="bg-white/5 rounded-2xl p-5 card-glow">
+                                <h2 className="font-display text-2xl mb-1">What's your name?</h2>
+                                <p className="text-white/50 text-sm mb-4">This is how you'll show up in your dinner parties.</p>
+                                {error && (
+                                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm">{error}</div>
+                                )}
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Your name"
+                                        value={nameInput}
+                                        onChange={(e) => setNameInput(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && saveDisplayName()}
+                                        className="flex-1 bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl placeholder-white/20"
+                                        autoFocus
+                                    />
+                                    <button onClick={saveDisplayName} disabled={!nameInput.trim() || savingName} className="btn-primary text-white px-5 py-3 rounded-xl font-semibold disabled:opacity-30 disabled:transform-none">
+                                        {savingName ? '...' : 'Save'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
             }
 
             // --- SESSIONS LIST ---

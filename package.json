@@ -3,7 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build": "node scripts/build-www.js"
+    "build": "node scripts/build-www.js",
+    "postinstall": "node scripts/patch-plugins.js"
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "^7.0.0",
