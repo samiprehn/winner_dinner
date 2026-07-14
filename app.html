@@ -525,6 +525,7 @@
             const [copied, setCopied] = useState(false);
             const [showCreate, setShowCreate] = useState(false);
             const [confirmLeave, setConfirmLeave] = useState(null);
+            const [confirmDeleteRestaurant, setConfirmDeleteRestaurant] = useState(null);
             // Apple sign-in often shares no name (only on the very first
             // authorization, and the user can decline) — ask for one instead
             // of listing them as "Anonymous" in every dinner party.
@@ -573,7 +574,7 @@
             const [sessionsLoaded, setSessionsLoaded] = useState(false);
             const [partyLoaded, setPartyLoaded] = useState(false);
             const uiRef = React.useRef({});
-            uiRef.current = { screen, celebration, confirmLeave };
+            uiRef.current = { screen, celebration, confirmLeave, confirmDeleteRestaurant };
 
             // Auth listener
             useEffect(() => {
@@ -592,6 +593,7 @@
                     const ui = uiRef.current;
                     if (ui.celebration) setCelebration(null);
                     else if (ui.confirmLeave) setConfirmLeave(null);
+                    else if (ui.confirmDeleteRestaurant) setConfirmDeleteRestaurant(null);
                     else if (ui.screen === 'swipe') { navDir.current = 'back'; setScreen('sessions'); setSessionCode(''); setError(''); }
                     else App.exitApp();
                 });
@@ -1979,6 +1981,38 @@
                                 </div>
                             </div>
                         )}
+                        {confirmDeleteRestaurant && (() => {
+                            // Locked while anyone has a vote on it: deleting
+                            // mid-vote skews the round. Votes vanish when
+                            // everyone taps Start Over, which unlocks this.
+                            const hasVotes = Object.values(allVotes || {}).some(v => v && v[toVoteKey(confirmDeleteRestaurant)] !== undefined);
+                            return (
+                                <React.Fragment>
+                                    <div className="sheet-backdrop" onClick={() => setConfirmDeleteRestaurant(null)}></div>
+                                    <div className="bottom-sheet">
+                                        <div className="sheet-handle"></div>
+                                        <h3 className="text-white font-semibold text-lg mb-1">
+                                            {hasVotes ? `Can't remove ${confirmDeleteRestaurant} yet` : `Remove ${confirmDeleteRestaurant}?`}
+                                        </h3>
+                                        <p className="text-white/40 text-sm mb-5">
+                                            {hasVotes
+                                                ? 'People have already voted on it. It can be removed once everyone taps Start Over.'
+                                                : 'It disappears from the list for everyone in this party.'}
+                                        </p>
+                                        {!hasVotes && (
+                                            <button onClick={() => { haptic('medium'); deleteRestaurant(confirmDeleteRestaurant); setConfirmDeleteRestaurant(null); }}
+                                                className="w-full btn-pass text-white py-3.5 rounded-xl font-semibold mb-2">
+                                                Remove Restaurant
+                                            </button>
+                                        )}
+                                        <button onClick={() => setConfirmDeleteRestaurant(null)}
+                                            className="w-full bg-white/5 hover:bg-white/10 text-white/60 py-3.5 rounded-xl font-medium transition-colors">
+                                            {hasVotes ? 'Got it' : 'Cancel'}
+                                        </button>
+                                    </div>
+                                </React.Fragment>
+                            );
+                        })()}
                         <div className="max-w-md mx-auto pt-4">
                             {/* Header */}
                             <div className="flex items-center gap-3 mb-6 fade-in">
@@ -2330,7 +2364,7 @@
                                                     {myVote === 'super' && <span className="text-amber-400 text-xs">★</span>}
                                                     {myVote === true && <span className="text-green-400 text-xs">✓</span>}
                                                     {myVote === false && <span className="text-red-400 text-xs">✗</span>}
-                                                    <button onClick={() => deleteRestaurant(r)} className="text-white/20 hover:text-red-400 active:text-red-400 transition-colors flex-shrink-0 p-2 -m-2" title="Remove restaurant">
+                                                    <button onClick={() => setConfirmDeleteRestaurant(r)} className="text-white/20 hover:text-red-400 active:text-red-400 transition-colors flex-shrink-0 p-2 -m-2" title="Remove restaurant">
                                                         <TrashIcon className="w-4 h-4" />
                                                     </button>
                                                 </div>
